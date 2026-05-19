@@ -380,23 +380,6 @@ h1 {
   text-transform: uppercase;
 }
 
-.watermark {
-  position: absolute;
-  right: 18px;
-  bottom: 18px;
-  max-width: calc(100vw - 36px);
-  padding: 9px 12px;
-  background: rgba(8, 10, 13, 0.34);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  color: rgba(255, 255, 255, 0.68);
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0;
-  pointer-events: none;
-  text-transform: uppercase;
-}
-
 .empty-state {
   display: grid;
   gap: 10px;
@@ -410,6 +393,16 @@ h1 {
 .empty-state strong {
   color: var(--text);
   font-size: 1.15rem;
+}
+
+.site-credit {
+  margin-top: 24px;
+  padding: 18px 0 4px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-align: right;
+  text-transform: uppercase;
 }
 
 @media (max-width: 720px) {
@@ -475,8 +468,7 @@ h1 {
     max-width: none;
   }
 
-  .watermark {
-    right: 12px;
-    bottom: 12px;
+  .site-credit {
+    text-align: left;
   }
 }
