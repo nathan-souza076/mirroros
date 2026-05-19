@@ -1,19 +1,28 @@
+const imageDurationMs = 8000;
+
 const state = {
   media: [],
   filter: "all",
   activeMedia: null,
+  activeIndex: -1,
+  isPaused: false,
   chromeTimer: null,
   infoTimer: null,
+  imageTimer: null,
   fitMode: localStorage.getItem("mirroros-fit-mode") || "contain"
 };
 
 const grid = document.querySelector("#mediaGrid");
 const statusLine = document.querySelector("#statusLine");
+const mediaCount = document.querySelector("#mediaCount");
 const template = document.querySelector("#mediaCardTemplate");
 const player = document.querySelector("#player");
 const stage = document.querySelector("#stage");
 const mediaKind = document.querySelector("#mediaKind");
 const mediaTitle = document.querySelector("#mediaTitle");
+const previousButton = document.querySelector("#previousButton");
+const playPauseButton = document.querySelector("#playPauseButton");
+const nextButton = document.querySelector("#nextButton");
 const infoButton = document.querySelector("#infoButton");
 const fitButton = document.querySelector("#fitButton");
 const fullscreenButton = document.querySelector("#fullscreenButton");
@@ -58,13 +67,40 @@ function getFilteredMedia() {
   return state.media.filter((item) => item.type === state.filter);
 }
 
+function getPlaylist() {
+  const filtered = getFilteredMedia();
+  return filtered.length ? filtered : state.media;
+}
+
 function setStatus(text) {
   statusLine.textContent = text;
+}
+
+function updatePlayPauseUi() {
+  player.classList.toggle("is-paused", state.isPaused);
+  playPauseButton.setAttribute("aria-label", state.isPaused ? "Reproduzir" : "Pausar");
+  playPauseButton.setAttribute("title", state.isPaused ? "Reproduzir" : "Pausar");
+}
+
+function clearImageTimer() {
+  window.clearTimeout(state.imageTimer);
+  state.imageTimer = null;
+}
+
+function scheduleImageAdvance() {
+  clearImageTimer();
+  if (state.isPaused || !state.activeMedia || state.activeMedia.type !== "image") return;
+  if (getPlaylist().length <= 1) return;
+
+  state.imageTimer = window.setTimeout(() => {
+    goToNext();
+  }, imageDurationMs);
 }
 
 function renderMedia() {
   const media = getFilteredMedia();
   grid.replaceChildren();
+  mediaCount.textContent = state.media.length;
 
   if (!media.length) {
     const empty = document.createElement("div");
@@ -74,7 +110,7 @@ function renderMedia() {
       <span>Atualize o manifest.json ou coloque arquivos na pasta media local.</span>
     `;
     grid.append(empty);
-    setStatus("0 arquivos disponiveis");
+    setStatus("Sem midias");
     return;
   }
 
@@ -93,7 +129,7 @@ function renderMedia() {
     grid.append(card);
   }
 
-  setStatus(`${media.length} arquivo${media.length === 1 ? "" : "s"} disponive${media.length === 1 ? "l" : "is"}`);
+  setStatus(`${media.length} arquivo${media.length === 1 ? "" : "s"}`);
 }
 
 async function fetchJson(url) {
@@ -129,7 +165,7 @@ function normalizeManifest(payload) {
 }
 
 async function loadMedia() {
-  setStatus("Carregando midias...");
+  setStatus("Carregando");
   refreshButton.disabled = true;
 
   try {
@@ -147,8 +183,9 @@ async function loadMedia() {
     openFromQuery();
   } catch (error) {
     console.error(error);
-    setStatus("Nao foi possivel carregar a lista.");
+    setStatus("Erro ao carregar");
     grid.replaceChildren();
+    mediaCount.textContent = "0";
   } finally {
     refreshButton.disabled = false;
   }
@@ -159,10 +196,10 @@ function showChromeBriefly() {
   window.clearTimeout(state.chromeTimer);
   state.chromeTimer = window.setTimeout(() => {
     player.classList.remove("show-chrome");
-  }, 1400);
+  }, 1600);
 }
 
-function showInfoBriefly(duration = 2400) {
+function showInfoBriefly(duration = 2600) {
   player.classList.add("show-info");
   window.clearTimeout(state.infoTimer);
   state.infoTimer = window.setTimeout(() => {
@@ -197,34 +234,59 @@ function requestFullscreen() {
   return Promise.resolve();
 }
 
-function openPlayer(item) {
-  state.activeMedia = item;
+function updateUrl(item) {
+  const params = new URLSearchParams(window.location.search);
+  params.set("play", item.id);
+  history.replaceState(null, "", `${window.location.pathname}?${params.toString()}`);
+}
+
+function renderActiveMedia(item) {
+  clearImageTimer();
   stage.replaceChildren();
-  mediaKind.textContent = item.type === "video" ? "Video em loop" : "Imagem em tela cheia";
+  mediaKind.textContent = item.type === "video" ? "Video" : "Imagem";
   mediaTitle.textContent = item.name;
 
   if (item.type === "video") {
     const video = document.createElement("video");
     video.src = item.url;
-    video.loop = true;
-    video.autoplay = true;
+    video.loop = getPlaylist().length <= 1;
+    video.autoplay = !state.isPaused;
     video.controls = false;
     video.playsInline = true;
-    video.preload = "auto";
+    video.preload = "metadata";
     video.muted = false;
+    video.addEventListener("ended", () => {
+      if (getPlaylist().length > 1) goToNext();
+    });
     video.addEventListener("canplay", () => {
-      video.play().catch(() => {
-        video.muted = true;
-        video.play().catch(() => {});
-      });
+      if (!state.isPaused) {
+        video.play().catch(() => {
+          video.muted = true;
+          video.play().catch(() => {});
+        });
+      }
     }, { once: true });
     stage.append(video);
-  } else {
-    const image = document.createElement("img");
-    image.src = item.url;
-    image.alt = item.name;
-    stage.append(image);
+    return;
   }
+
+  const image = document.createElement("img");
+  image.src = item.url;
+  image.alt = item.name;
+  image.decoding = "async";
+  stage.append(image);
+  scheduleImageAdvance();
+}
+
+function openPlayer(item) {
+  const playlist = getPlaylist();
+  const index = playlist.findIndex((media) => media.id === item.id);
+
+  state.activeMedia = item;
+  state.activeIndex = index >= 0 ? index : 0;
+  state.isPaused = false;
+  updatePlayPauseUi();
+  renderActiveMedia(item);
 
   player.classList.add("is-open");
   player.setAttribute("aria-hidden", "false");
@@ -233,16 +295,16 @@ function openPlayer(item) {
   showChromeBriefly();
   showInfoBriefly();
   requestFullscreen();
-
-  const params = new URLSearchParams(window.location.search);
-  params.set("play", item.id);
-  history.replaceState(null, "", `${window.location.pathname}?${params.toString()}`);
+  updateUrl(item);
 }
 
 function closePlayer() {
+  clearImageTimer();
   stage.replaceChildren();
   state.activeMedia = null;
-  player.classList.remove("is-open", "show-chrome", "show-info");
+  state.activeIndex = -1;
+  state.isPaused = false;
+  player.classList.remove("is-open", "show-chrome", "show-info", "is-paused");
   player.setAttribute("aria-hidden", "true");
   document.body.style.overflow = "";
 
@@ -251,6 +313,51 @@ function closePlayer() {
   }
 
   history.replaceState(null, "", window.location.pathname);
+}
+
+function goToIndex(index) {
+  const playlist = getPlaylist();
+  if (!playlist.length) return;
+
+  const nextIndex = (index + playlist.length) % playlist.length;
+  const item = playlist[nextIndex];
+  state.activeMedia = item;
+  state.activeIndex = nextIndex;
+  renderActiveMedia(item);
+  updatePlayPauseUi();
+  showChromeBriefly();
+  showInfoBriefly(1500);
+  updateUrl(item);
+}
+
+function goToNext() {
+  goToIndex(state.activeIndex + 1);
+}
+
+function goToPrevious() {
+  goToIndex(state.activeIndex - 1);
+}
+
+function togglePlayback() {
+  if (!state.activeMedia) return;
+
+  state.isPaused = !state.isPaused;
+  const video = stage.querySelector("video");
+
+  if (video) {
+    if (state.isPaused) {
+      video.pause();
+    } else {
+      video.play().catch(() => {});
+    }
+  } else if (state.isPaused) {
+    clearImageTimer();
+  } else {
+    scheduleImageAdvance();
+  }
+
+  updatePlayPauseUi();
+  showChromeBriefly();
 }
 
 function openFromQuery() {
@@ -273,6 +380,9 @@ filterButtons.forEach((button) => {
 });
 
 refreshButton.addEventListener("click", loadMedia);
+previousButton.addEventListener("click", goToPrevious);
+playPauseButton.addEventListener("click", togglePlayback);
+nextButton.addEventListener("click", goToNext);
 infoButton.addEventListener("click", toggleInfo);
 fitButton.addEventListener("click", toggleFitMode);
 fullscreenButton.addEventListener("click", requestFullscreen);
@@ -289,6 +399,19 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && state.activeMedia) {
     closePlayer();
     return;
+  }
+
+  if ((event.key === " " || event.key.toLowerCase() === "k") && state.activeMedia) {
+    event.preventDefault();
+    togglePlayback();
+  }
+
+  if (event.key === "ArrowRight" && state.activeMedia) {
+    goToNext();
+  }
+
+  if (event.key === "ArrowLeft" && state.activeMedia) {
+    goToPrevious();
   }
 
   if (event.key.toLowerCase() === "f" && state.activeMedia) {
