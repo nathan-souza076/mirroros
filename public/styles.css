@@ -396,12 +396,14 @@ h1 {
 }
 
 .site-credit {
-  margin-top: 24px;
-  padding: 18px 0 4px;
-  color: var(--muted);
-  font-size: 0.82rem;
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(157, 168, 183, 0.72);
+  font-size: 0.72rem;
   font-weight: 800;
-  text-align: right;
+  line-height: 1;
+  text-align: center;
   text-transform: uppercase;
 }
 
@@ -469,6 +471,7 @@ h1 {
   }
 
   .site-credit {
-    text-align: left;
+    margin-top: 22px;
+    text-align: center;
   }
 }

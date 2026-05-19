@@ -24,7 +24,7 @@ async function copyMedia() {
 
 async function copyPublicToDocs() {
   await fsp.rm(docsDir, { recursive: true, force: true });
-  await fsp.cp(publicDir, docsDir, { recursive: true });
+  await fsp.cp(publicDir, docsDir, { recursive: true, force: true });
   await fsp.writeFile(path.join(docsDir, ".nojekyll"), "");
 }
 
