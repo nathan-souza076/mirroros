@@ -1,0 +1,16 @@
+{
+  "name": "mirroros-loop-player",
+  "version": "1.0.0",
+  "description": "Web app local para exibir videos e imagens em loop em TVs da rede.",
+  "main": "server.js",
+  "scripts": {
+    "build": "node scripts/generate-manifest.js",
+    "build:github": "node scripts/build-github-pages.js",
+    "generate:manifest": "node scripts/generate-manifest.js",
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED"
+}

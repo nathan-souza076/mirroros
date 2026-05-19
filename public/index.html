@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MirrorOS Loop Player</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell" id="appShell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">MirrorOS</p>
+          <h1>Loop Player</h1>
+        </div>
+
+        <div class="toolbar" role="group" aria-label="Filtros e comandos">
+          <div class="segmented" aria-label="Tipo de midia">
+            <button class="segment is-active" type="button" data-filter="all">Tudo</button>
+            <button class="segment" type="button" data-filter="video">Videos</button>
+            <button class="segment" type="button" data-filter="image">Imagens</button>
+          </div>
+          <button class="icon-button" type="button" id="refreshButton" aria-label="Atualizar lista" title="Atualizar">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M21 12a9 9 0 0 1-15.12 6.64M3 12A9 9 0 0 1 18.12 5.36M21 5v6h-6M3 19v-6h6"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <section class="status-line" id="statusLine" aria-live="polite">Carregando midias...</section>
+
+      <section class="media-grid" id="mediaGrid" aria-label="Midias disponiveis"></section>
+    </main>
+
+    <section class="player" id="player" aria-hidden="true">
+      <div class="stage" id="stage"></div>
+      <div class="player-chrome">
+        <div class="now-playing">
+          <span class="media-kind" id="mediaKind"></span>
+          <strong id="mediaTitle"></strong>
+        </div>
+        <div class="player-actions">
+          <button class="chrome-button" type="button" id="fullscreenButton" aria-label="Tela cheia" title="Tela cheia">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M8 3H3v5M21 8V3h-5M3 16v5h5M16 21h5v-5"/>
+            </svg>
+          </button>
+          <button class="chrome-button" type="button" id="closeButton" aria-label="Sair" title="Sair">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M18 6 6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <template id="mediaCardTemplate">
+      <button class="media-card" type="button">
+        <span class="thumb">
+          <span class="thumb-icon"></span>
+        </span>
+        <span class="card-body">
+          <span class="card-title"></span>
+          <span class="card-meta"></span>
+        </span>
+      </button>
+    </template>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>
