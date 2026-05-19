@@ -9,6 +9,7 @@
   --accent: #2dd4bf;
   --accent-strong: #fb7185;
   --shadow: rgba(0, 0, 0, 0.38);
+  --chrome-bg: rgba(10, 12, 15, 0.72);
 }
 
 * {
@@ -247,52 +248,87 @@ h1 {
   background: #000;
 }
 
+.player.is-cover .stage video,
+.player.is-cover .stage img {
+  object-fit: cover;
+}
+
 .player-chrome {
   position: absolute;
-  inset: auto 18px 18px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px;
-  background: rgba(10, 12, 15, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  top: 18px;
+  right: 18px;
+  display: block;
+  padding: 8px;
+  background: var(--chrome-bg);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
+  box-shadow: 0 14px 36px var(--shadow);
   opacity: 0;
-  transform: translateY(10px);
+  pointer-events: none;
+  transform: translateY(-8px);
   transition: opacity 180ms ease, transform 180ms ease;
 }
 
-.player:hover .player-chrome,
 .player:focus-within .player-chrome,
 .player.show-chrome .player-chrome {
   opacity: 1;
+  pointer-events: auto;
   transform: translateY(0);
 }
 
 .now-playing {
+  position: absolute;
+  left: 18px;
+  bottom: 18px;
   display: grid;
-  gap: 3px;
-  min-width: 0;
+  gap: 4px;
+  max-width: min(560px, calc(100vw - 36px));
+  padding: 12px 14px;
+  background: var(--chrome-bg);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 14px 36px var(--shadow);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.player.show-info .now-playing {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .now-playing strong {
   overflow: hidden;
-  max-width: min(66vw, 900px);
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 1rem;
+  line-height: 1.2;
 }
 
 .media-kind {
   color: var(--accent);
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 800;
   text-transform: uppercase;
 }
 
 .player-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
+}
+
+.player-actions .chrome-button {
+  width: 48px;
+  height: 48px;
+  background: rgba(21, 24, 29, 0.9);
+}
+
+.player-actions .chrome-button.is-active {
+  color: var(--bg);
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 .empty-state {
@@ -345,11 +381,24 @@ h1 {
   }
 
   .player-chrome {
-    align-items: stretch;
-    flex-direction: column;
+    top: 12px;
+    right: 12px;
+    padding: 6px;
   }
 
-  .now-playing strong {
-    max-width: 100%;
+  .player-actions {
+    gap: 6px;
+  }
+
+  .player-actions .chrome-button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .now-playing {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    max-width: none;
   }
 }

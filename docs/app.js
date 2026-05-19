@@ -2,7 +2,9 @@ const state = {
   media: [],
   filter: "all",
   activeMedia: null,
-  chromeTimer: null
+  chromeTimer: null,
+  infoTimer: null,
+  fitMode: localStorage.getItem("mirroros-fit-mode") || "contain"
 };
 
 const grid = document.querySelector("#mediaGrid");
@@ -12,6 +14,8 @@ const player = document.querySelector("#player");
 const stage = document.querySelector("#stage");
 const mediaKind = document.querySelector("#mediaKind");
 const mediaTitle = document.querySelector("#mediaTitle");
+const infoButton = document.querySelector("#infoButton");
+const fitButton = document.querySelector("#fitButton");
 const fullscreenButton = document.querySelector("#fullscreenButton");
 const closeButton = document.querySelector("#closeButton");
 const refreshButton = document.querySelector("#refreshButton");
@@ -155,7 +159,35 @@ function showChromeBriefly() {
   window.clearTimeout(state.chromeTimer);
   state.chromeTimer = window.setTimeout(() => {
     player.classList.remove("show-chrome");
-  }, 2400);
+  }, 1400);
+}
+
+function showInfoBriefly(duration = 2400) {
+  player.classList.add("show-info");
+  window.clearTimeout(state.infoTimer);
+  state.infoTimer = window.setTimeout(() => {
+    player.classList.remove("show-info");
+  }, duration);
+}
+
+function toggleInfo() {
+  window.clearTimeout(state.infoTimer);
+  player.classList.toggle("show-info");
+}
+
+function applyFitMode() {
+  const isCover = state.fitMode === "cover";
+  player.classList.toggle("is-cover", isCover);
+  fitButton.classList.toggle("is-active", isCover);
+  fitButton.setAttribute("aria-label", isCover ? "Encaixar na tela" : "Preencher tela");
+  fitButton.setAttribute("title", isCover ? "Encaixar na tela" : "Preencher tela");
+}
+
+function toggleFitMode() {
+  state.fitMode = state.fitMode === "cover" ? "contain" : "cover";
+  localStorage.setItem("mirroros-fit-mode", state.fitMode);
+  applyFitMode();
+  showChromeBriefly();
 }
 
 function requestFullscreen() {
@@ -197,7 +229,9 @@ function openPlayer(item) {
   player.classList.add("is-open");
   player.setAttribute("aria-hidden", "false");
   document.body.style.overflow = "hidden";
+  applyFitMode();
   showChromeBriefly();
+  showInfoBriefly();
   requestFullscreen();
 
   const params = new URLSearchParams(window.location.search);
@@ -208,7 +242,7 @@ function openPlayer(item) {
 function closePlayer() {
   stage.replaceChildren();
   state.activeMedia = null;
-  player.classList.remove("is-open", "show-chrome");
+  player.classList.remove("is-open", "show-chrome", "show-info");
   player.setAttribute("aria-hidden", "true");
   document.body.style.overflow = "";
 
@@ -239,12 +273,16 @@ filterButtons.forEach((button) => {
 });
 
 refreshButton.addEventListener("click", loadMedia);
+infoButton.addEventListener("click", toggleInfo);
+fitButton.addEventListener("click", toggleFitMode);
 fullscreenButton.addEventListener("click", requestFullscreen);
 closeButton.addEventListener("click", closePlayer);
 
 player.addEventListener("mousemove", showChromeBriefly);
 player.addEventListener("click", (event) => {
-  if (event.target === player || event.target === stage) showChromeBriefly();
+  if (event.target === player || event.target === stage) {
+    showChromeBriefly();
+  }
 });
 
 document.addEventListener("keydown", (event) => {
@@ -256,6 +294,15 @@ document.addEventListener("keydown", (event) => {
   if (event.key.toLowerCase() === "f" && state.activeMedia) {
     requestFullscreen();
   }
+
+  if (event.key.toLowerCase() === "i" && state.activeMedia) {
+    toggleInfo();
+  }
+
+  if (event.key.toLowerCase() === "m" && state.activeMedia) {
+    toggleFitMode();
+  }
 });
 
+applyFitMode();
 loadMedia();

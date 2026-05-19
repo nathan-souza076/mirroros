@@ -36,11 +36,23 @@
     <section class="player" id="player" aria-hidden="true">
       <div class="stage" id="stage"></div>
       <div class="player-chrome">
-        <div class="now-playing">
-          <span class="media-kind" id="mediaKind"></span>
-          <strong id="mediaTitle"></strong>
-        </div>
         <div class="player-actions">
+          <button class="chrome-button" type="button" id="infoButton" aria-label="Mostrar informacoes" title="Informacoes">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M12 17v-6"/>
+              <path d="M12 7h.01"/>
+              <circle cx="12" cy="12" r="9"/>
+            </svg>
+          </button>
+          <button class="chrome-button" type="button" id="fitButton" aria-label="Preencher tela" title="Preencher tela">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M3 9V5a2 2 0 0 1 2-2h4"/>
+              <path d="M15 3h4a2 2 0 0 1 2 2v4"/>
+              <path d="M21 15v4a2 2 0 0 1-2 2h-4"/>
+              <path d="M9 21H5a2 2 0 0 1-2-2v-4"/>
+              <path d="M8 12h8"/>
+            </svg>
+          </button>
           <button class="chrome-button" type="button" id="fullscreenButton" aria-label="Tela cheia" title="Tela cheia">
             <svg aria-hidden="true" viewBox="0 0 24 24">
               <path d="M8 3H3v5M21 8V3h-5M3 16v5h5M16 21h5v-5"/>
@@ -52,6 +64,10 @@
             </svg>
           </button>
         </div>
+      </div>
+      <div class="now-playing" id="nowPlaying">
+        <span class="media-kind" id="mediaKind"></span>
+        <strong id="mediaTitle"></strong>
       </div>
     </section>
 
