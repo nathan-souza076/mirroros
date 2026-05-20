@@ -324,6 +324,54 @@ h1 {
   transform: translateY(0);
 }
 
+.player.controls-minimized .player-chrome,
+.player.controls-minimized:focus-within .player-chrome,
+.player.controls-minimized.show-chrome .player-chrome {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-8px);
+}
+
+.restore-controls {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  display: inline-grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: var(--chrome-bg);
+  color: var(--text);
+  pointer-events: none;
+  transform: translateY(-8px);
+  transition: transform 180ms ease;
+  visibility: hidden;
+}
+
+.restore-controls svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.2;
+}
+
+.player.controls-minimized:not(.is-idle) .restore-controls,
+.player.controls-minimized:focus-within .restore-controls {
+  pointer-events: auto;
+  transform: translateY(0);
+  visibility: visible;
+}
+
+.player.controls-minimized.is-idle .restore-controls {
+  pointer-events: none;
+  visibility: hidden;
+}
+
 .player-actions {
   display: flex;
   gap: 8px;
@@ -456,6 +504,11 @@ h1 {
     left: 12px;
     overflow-x: auto;
     padding: 6px;
+  }
+
+  .restore-controls {
+    top: 18px;
+    right: 18px;
   }
 
   .player-actions {

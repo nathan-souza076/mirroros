@@ -10,6 +10,7 @@ const state = {
   idleTimer: null,
   infoTimer: null,
   imageTimer: null,
+  controlsMinimized: false,
   fitMode: localStorage.getItem("mirroros-fit-mode") || "contain"
 };
 
@@ -27,6 +28,8 @@ const nextButton = document.querySelector("#nextButton");
 const infoButton = document.querySelector("#infoButton");
 const fitButton = document.querySelector("#fitButton");
 const fullscreenButton = document.querySelector("#fullscreenButton");
+const minimizeControlsButton = document.querySelector("#minimizeControlsButton");
+const restoreControlsButton = document.querySelector("#restoreControlsButton");
 const closeButton = document.querySelector("#closeButton");
 const refreshButton = document.querySelector("#refreshButton");
 const filterButtons = document.querySelectorAll("[data-filter]");
@@ -195,6 +198,7 @@ async function loadMedia() {
 function showChromeBriefly() {
   player.classList.remove("is-idle");
   player.classList.add("show-chrome");
+  setRestoreButtonVisible(state.controlsMinimized);
   window.clearTimeout(state.chromeTimer);
   window.clearTimeout(state.idleTimer);
   state.chromeTimer = window.setTimeout(() => {
@@ -203,8 +207,22 @@ function showChromeBriefly() {
   state.idleTimer = window.setTimeout(() => {
     player.classList.remove("show-chrome");
     setInfoVisible(false);
+    setRestoreButtonVisible(false);
     player.classList.add("is-idle");
-  }, 3200);
+  }, 3000);
+}
+
+function setRestoreButtonVisible(isVisible) {
+  restoreControlsButton.style.pointerEvents = isVisible ? "auto" : "none";
+  restoreControlsButton.style.transform = isVisible ? "translateY(0)" : "translateY(-8px)";
+  restoreControlsButton.style.visibility = isVisible ? "visible" : "hidden";
+}
+
+function setControlsMinimized(isMinimized) {
+  state.controlsMinimized = isMinimized;
+  player.classList.toggle("controls-minimized", isMinimized);
+  setRestoreButtonVisible(isMinimized);
+  showChromeBriefly();
 }
 
 function setInfoVisible(isVisible) {
@@ -307,6 +325,7 @@ function openPlayer(item) {
   player.classList.add("is-open");
   player.setAttribute("aria-hidden", "false");
   document.body.style.overflow = "hidden";
+  player.classList.toggle("controls-minimized", state.controlsMinimized);
   applyFitMode();
   showChromeBriefly();
   showInfoBriefly();
@@ -321,7 +340,9 @@ function closePlayer() {
   state.activeIndex = -1;
   state.isPaused = false;
   window.clearTimeout(state.idleTimer);
-  player.classList.remove("is-open", "show-chrome", "show-info", "is-paused", "is-idle");
+  state.controlsMinimized = false;
+  setRestoreButtonVisible(false);
+  player.classList.remove("is-open", "show-chrome", "show-info", "is-paused", "is-idle", "controls-minimized");
   player.setAttribute("aria-hidden", "true");
   document.body.style.overflow = "";
 
@@ -403,6 +424,8 @@ nextButton.addEventListener("click", goToNext);
 infoButton.addEventListener("click", toggleInfo);
 fitButton.addEventListener("click", toggleFitMode);
 fullscreenButton.addEventListener("click", requestFullscreen);
+minimizeControlsButton.addEventListener("click", () => setControlsMinimized(true));
+restoreControlsButton.addEventListener("click", () => setControlsMinimized(false));
 closeButton.addEventListener("click", closePlayer);
 
 player.addEventListener("mousemove", showChromeBriefly);
