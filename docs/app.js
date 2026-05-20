@@ -1,4 +1,5 @@
 const imageDurationMs = 8000;
+const activityThrottleMs = 120;
 
 const state = {
   media: [],
@@ -11,6 +12,8 @@ const state = {
   infoTimer: null,
   imageTimer: null,
   controlsMinimized: false,
+  lastActivityAt: 0,
+  preloadLinks: new Map(),
   fitMode: localStorage.getItem("mirroros-fit-mode") || "contain"
 };
 
@@ -76,6 +79,12 @@ function getPlaylist() {
   return filtered.length ? filtered : state.media;
 }
 
+function getNextPlaylistItem() {
+  const playlist = getPlaylist();
+  if (playlist.length <= 1 || state.activeIndex < 0) return null;
+  return playlist[(state.activeIndex + 1) % playlist.length];
+}
+
 function setStatus(text) {
   statusLine.textContent = text;
 }
@@ -130,10 +139,28 @@ function renderMedia() {
       item.folder
     ].filter(Boolean).join(" / ");
     card.addEventListener("click", () => openPlayer(item));
+    card.addEventListener("pointerenter", () => prewarmMedia(item), { passive: true });
     grid.append(card);
   }
 
   setStatus(`${media.length} arquivo${media.length === 1 ? "" : "s"}`);
+}
+
+function prewarmMedia(item) {
+  if (!item || state.preloadLinks.has(item.url)) return;
+
+  const link = document.createElement("link");
+  link.rel = item.type === "image" ? "prefetch" : "preload";
+  link.href = item.url;
+  link.as = item.type === "image" ? "image" : "video";
+
+  document.head.append(link);
+  state.preloadLinks.set(item.url, link);
+}
+
+function prewarmNextMedia() {
+  const nextItem = getNextPlaylistItem();
+  if (nextItem) prewarmMedia(nextItem);
 }
 
 async function fetchJson(url) {
@@ -212,6 +239,13 @@ function showChromeBriefly() {
   }, 3000);
 }
 
+function handlePlayerActivity() {
+  const now = Date.now();
+  if (now - state.lastActivityAt < activityThrottleMs) return;
+  state.lastActivityAt = now;
+  showChromeBriefly();
+}
+
 function setRestoreButtonVisible(isVisible) {
   restoreControlsButton.style.pointerEvents = isVisible ? "auto" : "none";
   restoreControlsButton.style.transform = isVisible ? "translateY(0)" : "translateY(-8px)";
@@ -287,8 +321,11 @@ function renderActiveMedia(item) {
     video.autoplay = !state.isPaused;
     video.controls = false;
     video.playsInline = true;
-    video.preload = "metadata";
+    video.preload = "auto";
     video.muted = false;
+    video.disablePictureInPicture = true;
+    video.setAttribute("webkit-playsinline", "");
+    video.setAttribute("fetchpriority", "high");
     video.addEventListener("ended", () => {
       if (getPlaylist().length > 1) goToNext();
     });
@@ -301,6 +338,8 @@ function renderActiveMedia(item) {
       }
     }, { once: true });
     stage.append(video);
+    video.load();
+    prewarmNextMedia();
     return;
   }
 
@@ -308,8 +347,11 @@ function renderActiveMedia(item) {
   image.src = item.url;
   image.alt = item.name;
   image.decoding = "async";
+  image.loading = "eager";
+  image.fetchPriority = "high";
   stage.append(image);
   scheduleImageAdvance();
+  prewarmNextMedia();
 }
 
 function openPlayer(item) {
@@ -323,6 +365,7 @@ function openPlayer(item) {
   renderActiveMedia(item);
 
   player.classList.add("is-open");
+  document.body.classList.add("is-playing-media");
   player.setAttribute("aria-hidden", "false");
   document.body.style.overflow = "hidden";
   player.classList.toggle("controls-minimized", state.controlsMinimized);
@@ -343,6 +386,7 @@ function closePlayer() {
   state.controlsMinimized = false;
   setRestoreButtonVisible(false);
   player.classList.remove("is-open", "show-chrome", "show-info", "is-paused", "is-idle", "controls-minimized");
+  document.body.classList.remove("is-playing-media");
   player.setAttribute("aria-hidden", "true");
   document.body.style.overflow = "";
 
@@ -428,11 +472,11 @@ minimizeControlsButton.addEventListener("click", () => setControlsMinimized(true
 restoreControlsButton.addEventListener("click", () => setControlsMinimized(false));
 closeButton.addEventListener("click", closePlayer);
 
-player.addEventListener("mousemove", showChromeBriefly);
-player.addEventListener("touchstart", showChromeBriefly, { passive: true });
+player.addEventListener("mousemove", handlePlayerActivity, { passive: true });
+player.addEventListener("touchstart", handlePlayerActivity, { passive: true });
 player.addEventListener("click", (event) => {
   if (event.target === player || event.target === stage) {
-    showChromeBriefly();
+    handlePlayerActivity();
   }
 });
 
