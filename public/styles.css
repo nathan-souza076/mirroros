@@ -265,6 +265,11 @@ h1 {
   display: block;
 }
 
+.player.is-idle,
+.player.is-idle * {
+  cursor: none;
+}
+
 .stage {
   position: absolute;
   inset: 0;

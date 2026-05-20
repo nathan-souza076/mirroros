@@ -7,6 +7,7 @@ const state = {
   activeIndex: -1,
   isPaused: false,
   chromeTimer: null,
+  idleTimer: null,
   infoTimer: null,
   imageTimer: null,
   fitMode: localStorage.getItem("mirroros-fit-mode") || "contain"
@@ -192,24 +193,39 @@ async function loadMedia() {
 }
 
 function showChromeBriefly() {
+  player.classList.remove("is-idle");
   player.classList.add("show-chrome");
   window.clearTimeout(state.chromeTimer);
+  window.clearTimeout(state.idleTimer);
   state.chromeTimer = window.setTimeout(() => {
     player.classList.remove("show-chrome");
   }, 1600);
+  state.idleTimer = window.setTimeout(() => {
+    player.classList.remove("show-chrome");
+    setInfoVisible(false);
+    player.classList.add("is-idle");
+  }, 3200);
+}
+
+function setInfoVisible(isVisible) {
+  player.classList.toggle("show-info", isVisible);
+  infoButton.classList.toggle("is-active", isVisible);
+  infoButton.setAttribute("aria-label", isVisible ? "Minimizar informacoes" : "Mostrar informacoes");
+  infoButton.setAttribute("title", isVisible ? "Minimizar informacoes" : "Informacoes");
 }
 
 function showInfoBriefly(duration = 2600) {
-  player.classList.add("show-info");
+  setInfoVisible(true);
   window.clearTimeout(state.infoTimer);
   state.infoTimer = window.setTimeout(() => {
-    player.classList.remove("show-info");
+    setInfoVisible(false);
   }, duration);
 }
 
 function toggleInfo() {
   window.clearTimeout(state.infoTimer);
-  player.classList.toggle("show-info");
+  setInfoVisible(!player.classList.contains("show-info"));
+  showChromeBriefly();
 }
 
 function applyFitMode() {
@@ -304,7 +320,8 @@ function closePlayer() {
   state.activeMedia = null;
   state.activeIndex = -1;
   state.isPaused = false;
-  player.classList.remove("is-open", "show-chrome", "show-info", "is-paused");
+  window.clearTimeout(state.idleTimer);
+  player.classList.remove("is-open", "show-chrome", "show-info", "is-paused", "is-idle");
   player.setAttribute("aria-hidden", "true");
   document.body.style.overflow = "";
 
@@ -389,6 +406,7 @@ fullscreenButton.addEventListener("click", requestFullscreen);
 closeButton.addEventListener("click", closePlayer);
 
 player.addEventListener("mousemove", showChromeBriefly);
+player.addEventListener("touchstart", showChromeBriefly, { passive: true });
 player.addEventListener("click", (event) => {
   if (event.target === player || event.target === stage) {
     showChromeBriefly();
