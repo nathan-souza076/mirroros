@@ -364,7 +364,6 @@ function createMediaCard(item) {
     item.type === "video" ? "Video" : "Imagem",
     item.extension ? item.extension.toUpperCase() : "",
     formatBytes(item.size),
-    item.playbackSize && item.playbackSize !== item.size ? "TV: " + formatBytes(item.playbackSize) : "",
     item.folder
   ];
   var metaText = [];
@@ -500,57 +499,6 @@ function normalizeManifest(payload) {
   return normalized;
 }
 
-function getLiteVariantKey(item) {
-  var name = String(item.name || item.fileName || item.id || "").toLowerCase();
-  name = name.replace(/\s*[-_. ](?:2160p|1440p|1080p|720p|540p|480p|360p|lite|compat|mobile)$/i, "");
-  return (item.folder || "") + "/" + name;
-}
-
-function isBetterLiteVariant(candidate, current) {
-  var candidateSize = candidate.size || Number.MAX_VALUE;
-  var currentSize = current.size || Number.MAX_VALUE;
-
-  if (candidateSize !== currentSize) return candidateSize < currentSize;
-  return /(?:720p|540p|480p|360p|lite|compat|mobile)$/i.test(candidate.name || "");
-}
-
-function prepareMediaForPlayback(media) {
-  var videoGroups = {};
-
-  for (var index = 0; index < media.length; index += 1) {
-    var item = media[index];
-
-    item.playbackUrl = item.url;
-    item.playbackSize = item.size;
-    item.playbackName = item.name;
-
-    if (item.type !== "video") continue;
-
-    var key = getLiteVariantKey(item);
-    var current = videoGroups[key];
-
-    if (!current || isBetterLiteVariant(item, current)) {
-      videoGroups[key] = item;
-    }
-  }
-
-  if (state.isLiteMode) {
-    for (var mediaIndex = 0; mediaIndex < media.length; mediaIndex += 1) {
-      var mediaItem = media[mediaIndex];
-      if (mediaItem.type !== "video") continue;
-
-      var source = videoGroups[getLiteVariantKey(mediaItem)];
-      if (!source) continue;
-
-      mediaItem.playbackUrl = source.url;
-      mediaItem.playbackSize = source.size;
-      mediaItem.playbackName = source.name;
-    }
-  }
-
-  return media;
-}
-
 function completeMediaLoad(payload) {
   var loadedMedia = normalizeManifest(payload);
 
@@ -561,7 +509,6 @@ function completeMediaLoad(payload) {
 
   state.media = loadedMedia;
   updatePerformanceMode();
-  state.media = prepareMediaForPlayback(loadedMedia);
 
   renderMedia();
   openFromQuery();
@@ -939,7 +886,7 @@ function renderActiveMedia(item) {
 
   if (item.type === "video") {
     var video = document.createElement("video");
-    video.src = item.playbackUrl || item.url;
+    video.src = item.url;
     video.loop = false;
     video.autoplay = false;
     video.controls = false;
