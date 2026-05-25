@@ -4,6 +4,7 @@ const path = require("node:path");
 const rootDir = path.resolve(__dirname, "..");
 const mediaDir = path.resolve(process.env.MEDIA_DIR || path.join(rootDir, "media"));
 const outputPath = path.resolve(process.env.MANIFEST_PATH || path.join(rootDir, "public", "manifest.json"));
+const scriptOutputPath = path.join(path.dirname(outputPath), "media-manifest.js");
 const baseUrl = (process.env.MEDIA_BASE_URL || "/media").replace(/\/$/, "");
 
 const videoExtensions = new Set([".mp4", ".webm", ".ogg", ".ogv", ".mov", ".m4v", ".mkv"]);
@@ -83,8 +84,13 @@ async function main() {
 
   await fsp.mkdir(path.dirname(outputPath), { recursive: true });
   await fsp.writeFile(outputPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  await fsp.writeFile(
+    scriptOutputPath,
+    `var MIRROROS_MANIFEST = ${JSON.stringify(manifest, null, 2)};\nwindow.MIRROROS_MANIFEST = MIRROROS_MANIFEST;\n`
+  );
 
   console.log(`Manifest gerado em ${outputPath}`);
+  console.log(`Manifest JS gerado em ${scriptOutputPath}`);
   console.log(`${media.length} midia(s) encontrada(s) em ${mediaDir}`);
   console.log(`Base URL: ${baseUrl}`);
 }

@@ -1,4 +1,4 @@
-{
+var MIRROROS_MANIFEST = {
   "generatedAt": "2026-05-25T18:29:54.686Z",
   "media": [
     {
@@ -24,4 +24,5 @@
       "url": "media/V%C3%8DDEO%20TV%20JUARA%20BRASNORTE(1)-720p.mp4"
     }
   ]
-}
+};
+window.MIRROROS_MANIFEST = MIRROROS_MANIFEST;
