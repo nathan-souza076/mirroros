@@ -741,6 +741,7 @@ function scheduleVideoLoadNotice(item) {
   clearVideoLoadTimer();
 
   if (!state.isLiteMode && !isLargeVideo(item)) return;
+  if (state.activeVideo && state.activeVideo.ended) return;
 
   state.videoLoadTimer = window.setTimeout(function () {
     showStageMessage(
@@ -765,6 +766,25 @@ function showVideoError(video) {
   }
 
   showStageMessage("Nao foi possivel reproduzir", detail);
+}
+
+function restartVideo(video) {
+  clearVideoLoadTimer();
+  clearStageMessage();
+
+  if (!video || state.isPaused) return;
+
+  try {
+    video.currentTime = 0;
+  } catch (error) {
+    try {
+      video.load();
+    } catch (loadError) {
+      noop();
+    }
+  }
+
+  startVideo(video);
 }
 
 function showPlayBlockedMessage() {
@@ -827,7 +847,7 @@ function renderActiveMedia(item) {
   if (item.type === "video") {
     var video = document.createElement("video");
     video.src = item.url;
-    video.loop = getPlaylist().length <= 1;
+    video.loop = false;
     video.autoplay = false;
     video.controls = false;
     video.playsInline = true;
@@ -839,7 +859,14 @@ function renderActiveMedia(item) {
     video.setAttribute("webkit-playsinline", "");
 
     video.addEventListener("ended", function () {
-      if (getPlaylist().length > 1) goToNext();
+      clearVideoLoadTimer();
+      clearStageMessage();
+
+      if (getPlaylist().length > 1) {
+        goToNext();
+      } else {
+        restartVideo(video);
+      }
     });
     video.addEventListener("playing", function () {
       clearVideoLoadTimer();
@@ -850,9 +877,11 @@ function renderActiveMedia(item) {
       clearStageMessage();
     });
     video.addEventListener("waiting", function () {
+      if (video.ended) return;
       scheduleVideoLoadNotice(item);
     });
     video.addEventListener("stalled", function () {
+      if (video.ended) return;
       scheduleVideoLoadNotice(item);
     });
     video.addEventListener("error", function () {
