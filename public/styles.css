@@ -459,6 +459,61 @@ h1 {
   line-height: 1.2;
 }
 
+.player-progress {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  left: 18px;
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(8, 10, 13, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 10px 26px var(--shadow);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.player.is-video.show-chrome .player-progress,
+.player.is-video:focus-within .player-progress {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.progress-times {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: rgba(247, 250, 252, 0.86);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-track {
+  overflow: hidden;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+}
+
+.progress-fill {
+  display: block;
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  border-radius: inherit;
+}
+
+.player.is-video .now-playing {
+  bottom: 74px;
+}
+
 .media-kind {
   color: var(--accent);
   font-size: 0.72rem;
@@ -508,6 +563,7 @@ body.is-lite-mode .app-shell,
 body.is-lite-mode .media-card,
 body.is-lite-mode .player-chrome,
 body.is-lite-mode .now-playing,
+body.is-lite-mode .player-progress,
 body.is-lite-mode .restore-controls,
 body.is-lite-mode .stage-message {
   box-shadow: none;
@@ -601,6 +657,16 @@ body.is-lite-mode .thumb {
     right: 12px;
     bottom: 62px;
     max-width: none;
+  }
+
+  .player.is-video .now-playing {
+    bottom: 116px;
+  }
+
+  .player-progress {
+    right: 12px;
+    bottom: 62px;
+    left: 12px;
   }
 
   .site-credit {

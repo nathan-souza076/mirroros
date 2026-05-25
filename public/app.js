@@ -43,6 +43,10 @@ var player = document.querySelector("#player");
 var stage = document.querySelector("#stage");
 var mediaKind = document.querySelector("#mediaKind");
 var mediaTitle = document.querySelector("#mediaTitle");
+var playerProgress = document.querySelector("#playerProgress");
+var progressElapsed = document.querySelector("#progressElapsed");
+var progressDuration = document.querySelector("#progressDuration");
+var progressFill = document.querySelector("#progressFill");
 var previousButton = document.querySelector("#previousButton");
 var playPauseButton = document.querySelector("#playPauseButton");
 var nextButton = document.querySelector("#nextButton");
@@ -198,6 +202,66 @@ function formatBytes(bytes) {
   }
 
   return size.toFixed(size >= 10 || unitIndex === 0 ? 0 : 1) + " " + units[unitIndex];
+}
+
+function formatTimecode(seconds) {
+  var totalSeconds;
+  var hours;
+  var minutes;
+  var remainder;
+
+  if (!seconds || !isFinite(seconds) || seconds < 0) return "0:00";
+
+  totalSeconds = Math.floor(seconds);
+  hours = Math.floor(totalSeconds / 3600);
+  minutes = Math.floor((totalSeconds % 3600) / 60);
+  remainder = totalSeconds % 60;
+
+  if (hours > 0) {
+    return hours + ":" +
+      (minutes < 10 ? "0" : "") + minutes + ":" +
+      (remainder < 10 ? "0" : "") + remainder;
+  }
+
+  return minutes + ":" + (remainder < 10 ? "0" : "") + remainder;
+}
+
+function resetVideoProgress() {
+  if (progressFill) progressFill.style.width = "0%";
+  if (progressElapsed) progressElapsed.textContent = "0:00";
+  if (progressDuration) progressDuration.textContent = "0:00";
+}
+
+function setVideoProgressActive(isActive) {
+  toggleClass(player, "is-video", isActive);
+
+  if (playerProgress) {
+    playerProgress.setAttribute("aria-hidden", isActive ? "false" : "true");
+  }
+
+  if (!isActive) resetVideoProgress();
+}
+
+function updateVideoProgress(video) {
+  var duration;
+  var current;
+  var percent = 0;
+
+  if (!video) {
+    resetVideoProgress();
+    return;
+  }
+
+  duration = video.duration;
+  current = video.currentTime || 0;
+
+  if (duration && isFinite(duration) && duration > 0) {
+    percent = Math.max(0, Math.min(100, (current / duration) * 100));
+  }
+
+  if (progressFill) progressFill.style.width = percent + "%";
+  if (progressElapsed) progressElapsed.textContent = formatTimecode(current);
+  if (progressDuration) progressDuration.textContent = formatTimecode(duration);
 }
 
 function getFilteredMedia() {
@@ -809,6 +873,8 @@ function startVideoLoopWatchdog(video) {
 
     if (isVideoNearEnd(video)) {
       handleVideoFinished(video);
+    } else {
+      updateVideoProgress(video);
     }
   }, 500);
 }
@@ -869,6 +935,7 @@ function renderActiveMedia(item) {
   clearStage();
   mediaKind.textContent = item.type === "video" ? "Video" : "Imagem";
   mediaTitle.textContent = item.name;
+  setVideoProgressActive(item.type === "video");
 
   if (item.type === "video") {
     var video = document.createElement("video");
@@ -885,27 +952,40 @@ function renderActiveMedia(item) {
     video.setAttribute("webkit-playsinline", "");
 
     video.addEventListener("ended", function () {
+      updateVideoProgress(video);
       handleVideoFinished(video);
     });
     video.addEventListener("timeupdate", function () {
+      updateVideoProgress(video);
       if (isVideoNearEnd(video)) handleVideoFinished(video);
+    });
+    video.addEventListener("loadedmetadata", function () {
+      updateVideoProgress(video);
+    });
+    video.addEventListener("durationchange", function () {
+      updateVideoProgress(video);
     });
     video.addEventListener("playing", function () {
       clearVideoLoadTimer();
       clearStageMessage();
+      updateVideoProgress(video);
     });
     video.addEventListener("canplay", function () {
       clearVideoLoadTimer();
       clearStageMessage();
+      updateVideoProgress(video);
     });
     video.addEventListener("pause", function () {
+      updateVideoProgress(video);
       if (!state.isPaused && isVideoNearEnd(video)) handleVideoFinished(video);
     });
     video.addEventListener("waiting", function () {
+      updateVideoProgress(video);
       if (isVideoNearEnd(video)) handleVideoFinished(video);
       else clearVideoLoadTimer();
     });
     video.addEventListener("stalled", function () {
+      updateVideoProgress(video);
       if (isVideoNearEnd(video)) handleVideoFinished(video);
       else clearVideoLoadTimer();
     });
@@ -915,6 +995,7 @@ function renderActiveMedia(item) {
 
     stage.appendChild(video);
     state.activeVideo = video;
+    updateVideoProgress(video);
     startVideoLoopWatchdog(video);
     startVideo(video);
     prewarmNextMedia();
@@ -965,6 +1046,7 @@ function openPlayer(item) {
 function closePlayer() {
   clearImageTimer();
   clearStage();
+  setVideoProgressActive(false);
   state.activeMedia = null;
   state.activeIndex = -1;
   state.isPaused = false;
