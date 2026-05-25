@@ -26,8 +26,10 @@ var state = {
   infoTimer: null,
   imageTimer: null,
   videoLoadTimer: null,
+  videoLoopTimer: null,
   controlsMinimized: false,
   lastActivityAt: 0,
+  lastLoopRestartAt: 0,
   preloadLinks: {},
   openedFromQuery: false,
   isLiteMode: shouldUseLiteMode(),
@@ -257,6 +259,11 @@ function clearImageTimer() {
 function clearVideoLoadTimer() {
   window.clearTimeout(state.videoLoadTimer);
   state.videoLoadTimer = null;
+}
+
+function clearVideoLoopTimer() {
+  window.clearInterval(state.videoLoopTimer);
+  state.videoLoopTimer = null;
 }
 
 function scheduleImageAdvance() {
@@ -713,6 +720,7 @@ function releaseActiveVideo() {
   var video = state.activeVideo;
 
   clearVideoLoadTimer();
+  clearVideoLoopTimer();
 
   if (!video) return;
 
@@ -759,13 +767,23 @@ function showVideoError(video) {
 }
 
 function isVideoNearEnd(video) {
+  var remaining;
+
   if (!video) return false;
   if (video.ended) return true;
   if (!window.isFinite || !isFinite(video.duration) || video.duration <= 0) return false;
-  return video.duration - video.currentTime <= 0.4;
+  remaining = video.duration - video.currentTime;
+  return remaining <= 0.25 || (video.paused && remaining <= 3);
 }
 
 function handleVideoFinished(video) {
+  var now = Date.now();
+
+  if (video && video !== state.activeVideo) return;
+  if (state.isPaused) return;
+  if (now - state.lastLoopRestartAt < 1200) return;
+
+  state.lastLoopRestartAt = now;
   clearVideoLoadTimer();
   clearStageMessage();
 
@@ -781,18 +799,24 @@ function restartVideo(video) {
   clearStageMessage();
 
   if (!video || state.isPaused) return;
+  if (video !== state.activeVideo || !state.activeMedia) return;
 
-  try {
-    video.currentTime = 0;
-  } catch (error) {
-    try {
-      video.load();
-    } catch (loadError) {
-      noop();
+  renderActiveMedia(state.activeMedia);
+}
+
+function startVideoLoopWatchdog(video) {
+  clearVideoLoopTimer();
+
+  state.videoLoopTimer = window.setInterval(function () {
+    if (!video || video !== state.activeVideo) {
+      clearVideoLoopTimer();
+      return;
     }
-  }
 
-  startVideo(video);
+    if (isVideoNearEnd(video)) {
+      handleVideoFinished(video);
+    }
+  }, 500);
 }
 
 function showPlayBlockedMessage() {
@@ -880,6 +904,9 @@ function renderActiveMedia(item) {
       clearVideoLoadTimer();
       clearStageMessage();
     });
+    video.addEventListener("pause", function () {
+      if (!state.isPaused && isVideoNearEnd(video)) handleVideoFinished(video);
+    });
     video.addEventListener("waiting", function () {
       if (isVideoNearEnd(video)) handleVideoFinished(video);
       else clearVideoLoadTimer();
@@ -894,6 +921,7 @@ function renderActiveMedia(item) {
 
     stage.appendChild(video);
     state.activeVideo = video;
+    startVideoLoopWatchdog(video);
     startVideo(video);
     prewarmNextMedia();
     return;
