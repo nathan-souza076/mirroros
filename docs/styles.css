@@ -477,10 +477,15 @@ h1 {
   transition: opacity 180ms ease, transform 180ms ease;
 }
 
-.player.is-video.show-chrome .player-progress,
-.player.is-video:focus-within .player-progress {
+.player.is-video.show-chrome:not(.is-idle) .player-progress {
   opacity: 1;
   transform: translateY(0);
+}
+
+.player.is-idle .player-progress,
+.player.controls-minimized .player-progress {
+  opacity: 0;
+  transform: translateY(8px);
 }
 
 .progress-times {
