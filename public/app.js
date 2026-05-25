@@ -739,16 +739,6 @@ function shouldStartMuted() {
 
 function scheduleVideoLoadNotice(item) {
   clearVideoLoadTimer();
-
-  if (!state.isLiteMode && !isLargeVideo(item)) return;
-  if (state.activeVideo && state.activeVideo.ended) return;
-
-  state.videoLoadTimer = window.setTimeout(function () {
-    showStageMessage(
-      "Carregando video",
-      "Este aparelho pode demorar com arquivos grandes. Para media boxes fracas, use MP4 H.264 em 1080p ou 720p."
-    );
-  }, 3500);
 }
 
 function showVideoError(video) {
@@ -766,6 +756,24 @@ function showVideoError(video) {
   }
 
   showStageMessage("Nao foi possivel reproduzir", detail);
+}
+
+function isVideoNearEnd(video) {
+  if (!video) return false;
+  if (video.ended) return true;
+  if (!window.isFinite || !isFinite(video.duration) || video.duration <= 0) return false;
+  return video.duration - video.currentTime <= 0.4;
+}
+
+function handleVideoFinished(video) {
+  clearVideoLoadTimer();
+  clearStageMessage();
+
+  if (getPlaylist().length > 1) {
+    goToNext();
+  } else {
+    restartVideo(video);
+  }
 }
 
 function restartVideo(video) {
@@ -800,7 +808,7 @@ function startVideo(video) {
 
   if (!video) return;
   clearStageMessage();
-  scheduleVideoLoadNotice(state.activeMedia);
+  clearVideoLoadTimer();
 
   try {
     result = video.play();
@@ -859,14 +867,10 @@ function renderActiveMedia(item) {
     video.setAttribute("webkit-playsinline", "");
 
     video.addEventListener("ended", function () {
-      clearVideoLoadTimer();
-      clearStageMessage();
-
-      if (getPlaylist().length > 1) {
-        goToNext();
-      } else {
-        restartVideo(video);
-      }
+      handleVideoFinished(video);
+    });
+    video.addEventListener("timeupdate", function () {
+      if (isVideoNearEnd(video)) handleVideoFinished(video);
     });
     video.addEventListener("playing", function () {
       clearVideoLoadTimer();
@@ -877,12 +881,12 @@ function renderActiveMedia(item) {
       clearStageMessage();
     });
     video.addEventListener("waiting", function () {
-      if (video.ended) return;
-      scheduleVideoLoadNotice(item);
+      if (isVideoNearEnd(video)) handleVideoFinished(video);
+      else clearVideoLoadTimer();
     });
     video.addEventListener("stalled", function () {
-      if (video.ended) return;
-      scheduleVideoLoadNotice(item);
+      if (isVideoNearEnd(video)) handleVideoFinished(video);
+      else clearVideoLoadTimer();
     });
     video.addEventListener("error", function () {
       showVideoError(video);
