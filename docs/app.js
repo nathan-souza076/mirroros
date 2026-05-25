@@ -300,6 +300,7 @@ function createMediaCard(item) {
     item.type === "video" ? "Video" : "Imagem",
     item.extension ? item.extension.toUpperCase() : "",
     formatBytes(item.size),
+    item.playbackSize && item.playbackSize !== item.size ? "TV: " + formatBytes(item.playbackSize) : "",
     item.folder
   ];
   var metaText = [];
@@ -449,45 +450,41 @@ function isBetterLiteVariant(candidate, current) {
   return /(?:720p|540p|480p|360p|lite|compat|mobile)$/i.test(candidate.name || "");
 }
 
-function chooseLiteMedia(media) {
-  var slots = [];
+function prepareMediaForPlayback(media) {
   var videoGroups = {};
 
   for (var index = 0; index < media.length; index += 1) {
     var item = media[index];
 
-    if (item.type !== "video") {
-      slots.push({ item: item });
-      continue;
-    }
+    item.playbackUrl = item.url;
+    item.playbackSize = item.size;
+    item.playbackName = item.name;
+
+    if (item.type !== "video") continue;
 
     var key = getLiteVariantKey(item);
-    var slot = videoGroups[key];
+    var current = videoGroups[key];
 
-    if (!slot) {
-      slot = {
-        item: item,
-        aliases: [item.id]
-      };
-      videoGroups[key] = slot;
-      slots.push(slot);
-    } else {
-      slot.aliases.push(item.id);
-      if (isBetterLiteVariant(item, slot.item)) {
-        slot.item = item;
-      }
+    if (!current || isBetterLiteVariant(item, current)) {
+      videoGroups[key] = item;
     }
   }
 
-  var selected = [];
-  for (var slotIndex = 0; slotIndex < slots.length; slotIndex += 1) {
-    if (slots[slotIndex].aliases) {
-      slots[slotIndex].item.aliases = slots[slotIndex].aliases;
+  if (state.isLiteMode) {
+    for (var mediaIndex = 0; mediaIndex < media.length; mediaIndex += 1) {
+      var mediaItem = media[mediaIndex];
+      if (mediaItem.type !== "video") continue;
+
+      var source = videoGroups[getLiteVariantKey(mediaItem)];
+      if (!source) continue;
+
+      mediaItem.playbackUrl = source.url;
+      mediaItem.playbackSize = source.size;
+      mediaItem.playbackName = source.name;
     }
-    selected.push(slots[slotIndex].item);
   }
 
-  return selected;
+  return media;
 }
 
 function completeMediaLoad(payload) {
@@ -500,10 +497,7 @@ function completeMediaLoad(payload) {
 
   state.media = loadedMedia;
   updatePerformanceMode();
-
-  if (state.isLiteMode) {
-    state.media = chooseLiteMedia(loadedMedia);
-  }
+  state.media = prepareMediaForPlayback(loadedMedia);
 
   renderMedia();
   openFromQuery();
@@ -878,7 +872,7 @@ function renderActiveMedia(item) {
 
   if (item.type === "video") {
     var video = document.createElement("video");
-    video.src = item.url;
+    video.src = item.playbackUrl || item.url;
     video.loop = false;
     video.autoplay = false;
     video.controls = false;
