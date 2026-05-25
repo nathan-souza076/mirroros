@@ -792,11 +792,7 @@ function handleVideoFinished(video) {
   clearVideoLoadTimer();
   clearStageMessage();
 
-  if (getPlaylist().length > 1) {
-    goToNext();
-  } else {
-    restartVideo(video);
-  }
+  restartVideo(video);
 }
 
 function restartVideo(video) {
