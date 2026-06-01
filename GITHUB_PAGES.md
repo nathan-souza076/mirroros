@@ -61,7 +61,18 @@ O GitHub Pages e estatico, entao para salvar playlists globais direto pelo link 
 
 Na primeira vez que salvar uma playlist pelo app, cole uma chave do GitHub com permissao de escrita em `Contents` para este repositorio. A chave fica salva apenas no navegador daquele aparelho/editor.
 
-Resumo do fluxo:
+### Criar a chave de edicao
+
+1. Abra GitHub > `Settings` > `Developer settings`.
+2. Entre em `Personal access tokens` > `Fine-grained tokens`.
+3. Clique em `Generate new token`.
+4. Em `Repository access`, selecione somente o repositorio `mirroros`.
+5. Em `Repository permissions`, deixe `Contents` como `Read and write`.
+6. Gere a chave e copie o token.
+
+So entregue essa chave para quem pode alterar playlists, porque ela permite gravar arquivos no repositorio.
+
+### Editar pelo link publico
 
 1. Abra `https://SEU-USUARIO.github.io/mirroros/`.
 2. Clique em `Playlists`.
@@ -69,3 +80,7 @@ Resumo do fluxo:
 4. Ao salvar, informe a chave do GitHub se o app pedir.
 
 Depois que o app salva, todos que abrirem o mesmo link passam a ler a playlist atualizada do repositorio.
+
+Voce pode apagar todas as playlists. O seletor sempre mantem `Todas as midias`, mas isso e apenas a biblioteca geral, nao uma playlist criada.
+
+Use o botao `Limpar cache` no topo do app quando quiser forcar o navegador/TV a buscar a versao mais recente das playlists e dos arquivos publicados.

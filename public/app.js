@@ -72,6 +72,7 @@ var minimizeControlsButton = document.querySelector("#minimizeControlsButton");
 var restoreControlsButton = document.querySelector("#restoreControlsButton");
 var closeButton = document.querySelector("#closeButton");
 var refreshButton = document.querySelector("#refreshButton");
+var clearCacheButton = document.querySelector("#clearCacheButton");
 var playlistSelect = document.querySelector("#playlistSelect");
 var managePlaylistsButton = document.querySelector("#managePlaylistsButton");
 var playlistEditor = document.querySelector("#playlistEditor");
@@ -193,6 +194,14 @@ function setStoredValue(key, value) {
   }
 }
 
+function removeStoredValue(key) {
+  try {
+    if (window.localStorage) window.localStorage.removeItem(key);
+  } catch (error) {
+    noop();
+  }
+}
+
 function getApiBaseUrl() {
   var configured = getQueryParam("api") || getQueryParam("server");
 
@@ -255,11 +264,7 @@ function getGithubToken() {
 }
 
 function clearGithubToken() {
-  try {
-    if (window.localStorage) window.localStorage.removeItem(githubTokenStorageKey);
-  } catch (error) {
-    noop();
-  }
+  removeStoredValue(githubTokenStorageKey);
 }
 
 function encodeBase64Utf8(value) {
@@ -1057,14 +1062,22 @@ function deletePlaylistFromEditor() {
 
   if (!confirmed) return;
 
-  deleteStoredPlaylist(playlist.id);
-
   if (state.activePlaylistId === playlist.id) {
     state.activePlaylistId = "all";
   }
 
   state.editingPlaylistId = null;
-  deleteStoredPlaylist(playlist.id, refreshPlaylistsAfterChange);
+  deleteStoredPlaylist(playlist.id, function (message) {
+    if (message === "Playlist salva no GitHub para todos") {
+      message = "Playlist apagada no GitHub para todos";
+    } else if (message === "Playlist salva para todos") {
+      message = "Playlist apagada para todos";
+    } else if (message === "Playlist salva neste aparelho") {
+      message = "Playlist apagada neste aparelho";
+    }
+
+    refreshPlaylistsAfterChange(message);
+  });
 }
 
 function getFilteredMedia() {
@@ -1500,6 +1513,56 @@ function loadMedia() {
 
     fetchJson("manifest.json", completeMediaLoad, failMediaLoad);
   });
+}
+
+function reloadWithCacheBust() {
+  var nextUrl;
+
+  if (window.URLSearchParams) {
+    try {
+      var params = new URLSearchParams(window.location.search || "");
+      params.set("cache", String(Date.now()));
+      nextUrl = window.location.pathname + "?" + params.toString();
+    } catch (error) {
+      nextUrl = null;
+    }
+  }
+
+  if (!nextUrl) {
+    nextUrl = window.location.pathname + "?cache=" + Date.now();
+  }
+
+  window.location.href = nextUrl;
+}
+
+function clearCacheAndReload() {
+  var cacheApi = window.caches;
+
+  setStatus("Limpando cache");
+  removeStoredValue(playlistStorageKey);
+
+  if (cacheApi && cacheApi.keys && cacheApi.delete) {
+    try {
+      cacheApi.keys().then(function (keys) {
+        var deletes = [];
+
+        for (var index = 0; index < keys.length; index += 1) {
+          deletes.push(cacheApi.delete(keys[index]));
+        }
+
+        if (window.Promise && window.Promise.all) {
+          window.Promise.all(deletes).then(reloadWithCacheBust, reloadWithCacheBust);
+        } else {
+          reloadWithCacheBust();
+        }
+      }, reloadWithCacheBust);
+      return;
+    } catch (error) {
+      noop();
+    }
+  }
+
+  reloadWithCacheBust();
 }
 
 function showChromeBriefly() {
@@ -2092,6 +2155,9 @@ for (var filterIndex = 0; filterIndex < filterButtons.length; filterIndex += 1) 
 }
 
 refreshButton.addEventListener("click", loadMedia);
+if (clearCacheButton) {
+  clearCacheButton.addEventListener("click", clearCacheAndReload);
+}
 previousButton.addEventListener("click", goToPrevious);
 playPauseButton.addEventListener("click", togglePlayback);
 nextButton.addEventListener("click", goToNext);
