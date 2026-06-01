@@ -16,8 +16,13 @@
     },
     {
       "id": "user-1780323298189-602",
-      "name": "Nova playlist",
-      "items": []
+      "name": "Juara",
+      "items": [
+        "Piracanjuba 1.mp4",
+        "Piracanjuba 2.mp4",
+        "Santa Maria.mp4",
+        "VÍDEO TV JUARA BRASNORTE(1).mp4"
+      ]
     }
   ],
   "deletedIds": []
