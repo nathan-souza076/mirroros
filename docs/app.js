@@ -1,6 +1,7 @@
 var imageDurationMs = 8000;
 var activityThrottleMs = 180;
 var heavyVideoBytes = 25 * 1024 * 1024;
+var playlistStorageKey = "mirroros-user-playlists";
 
 if (!Date.now) {
   Date.now = function () {
@@ -18,6 +19,9 @@ var state = {
   media: [],
   playlists: [],
   activePlaylistId: getQueryParam("playlist") || "all",
+  storedPlaylistPayload: { playlists: [], deletedIds: [] },
+  embeddedPlaylistIds: {},
+  editingPlaylistId: null,
   filter: "all",
   activeMedia: null,
   activeIndex: -1,
@@ -60,6 +64,15 @@ var restoreControlsButton = document.querySelector("#restoreControlsButton");
 var closeButton = document.querySelector("#closeButton");
 var refreshButton = document.querySelector("#refreshButton");
 var playlistSelect = document.querySelector("#playlistSelect");
+var managePlaylistsButton = document.querySelector("#managePlaylistsButton");
+var playlistEditor = document.querySelector("#playlistEditor");
+var closePlaylistEditorButton = document.querySelector("#closePlaylistEditorButton");
+var newPlaylistButton = document.querySelector("#newPlaylistButton");
+var playlistList = document.querySelector("#playlistList");
+var playlistNameInput = document.querySelector("#playlistNameInput");
+var playlistItems = document.querySelector("#playlistItems");
+var savePlaylistButton = document.querySelector("#savePlaylistButton");
+var deletePlaylistButton = document.querySelector("#deletePlaylistButton");
 var filterButtons = document.querySelectorAll("[data-filter]");
 
 var icons = {
@@ -267,8 +280,16 @@ function updateVideoProgress(video) {
   if (progressDuration) progressDuration.textContent = formatTimecode(duration);
 }
 
+function getPlaylistTokenValue(token) {
+  if (token && typeof token === "object") {
+    return token.id || token.fileName || token.name || token.url || "";
+  }
+
+  return token;
+}
+
 function findMediaByPlaylistToken(token) {
-  var value = String(token || "");
+  var value = String(getPlaylistTokenValue(token) || "");
 
   for (var index = 0; index < state.media.length; index += 1) {
     var item = state.media[index];
@@ -287,8 +308,10 @@ function findMediaByPlaylistToken(token) {
   return null;
 }
 
-function normalizePlaylists(payload) {
+function normalizePlaylists(payload, options) {
   var source = Array.isArray(payload) ? payload : payload && payload.playlists;
+  var allowEmpty = options && options.allowEmpty;
+  var isStored = options && options.isStored;
   var normalized = [];
 
   if (!Array.isArray(source)) return normalized;
@@ -297,7 +320,9 @@ function normalizePlaylists(payload) {
     var playlist = source[index];
     var playlistItems = playlist && playlist.items;
     var items = [];
+    var itemIds = [];
     var seen = {};
+    var playlistId;
 
     if (!playlist || !Array.isArray(playlistItems)) continue;
 
@@ -307,28 +332,134 @@ function normalizePlaylists(payload) {
 
       seen[media.id] = true;
       items.push(media);
+      itemIds.push(media.id);
     }
 
-    if (!items.length) continue;
+    if (!items.length && !allowEmpty) continue;
+
+    playlistId = String(playlist.id || playlist.name || "playlist-" + (normalized.length + 1));
 
     normalized.push({
-      id: String(playlist.id || playlist.name || "playlist-" + (normalized.length + 1)),
+      id: playlistId,
       name: playlist.name || playlist.id || "Playlist " + (normalized.length + 1),
-      items: items
+      items: items,
+      itemIds: itemIds,
+      isStored: !!isStored
     });
   }
 
   return normalized;
 }
 
+function normalizeStoredPlaylistsPayload(payload) {
+  var rawPlaylists = Array.isArray(payload) ? payload : payload && payload.playlists;
+  var rawDeletedIds = payload && payload.deletedIds;
+  var normalized = { playlists: [], deletedIds: [] };
+  var seenDeleted = {};
+
+  if (Array.isArray(rawPlaylists)) {
+    for (var index = 0; index < rawPlaylists.length; index += 1) {
+      var playlist = rawPlaylists[index];
+      var items = [];
+
+      if (!playlist || !playlist.id) continue;
+
+      if (Array.isArray(playlist.items)) {
+        for (var itemIndex = 0; itemIndex < playlist.items.length; itemIndex += 1) {
+          var itemId = String(getPlaylistTokenValue(playlist.items[itemIndex]) || "");
+          if (itemId) items.push(itemId);
+        }
+      }
+
+      normalized.playlists.push({
+        id: String(playlist.id),
+        name: String(playlist.name || playlist.id),
+        items: items
+      });
+    }
+  }
+
+  if (Array.isArray(rawDeletedIds)) {
+    for (var deletedIndex = 0; deletedIndex < rawDeletedIds.length; deletedIndex += 1) {
+      var deletedId = String(rawDeletedIds[deletedIndex] || "");
+      if (!deletedId || seenDeleted[deletedId]) continue;
+
+      seenDeleted[deletedId] = true;
+      normalized.deletedIds.push(deletedId);
+    }
+  }
+
+  return normalized;
+}
+
+function loadStoredPlaylistsPayload() {
+  var raw = getStoredValue(playlistStorageKey, "");
+
+  if (!raw) return normalizeStoredPlaylistsPayload(state.storedPlaylistPayload);
+
+  try {
+    return normalizeStoredPlaylistsPayload(JSON.parse(raw));
+  } catch (error) {
+    return { playlists: [], deletedIds: [] };
+  }
+}
+
+function saveStoredPlaylistsPayload(payload) {
+  var normalized = normalizeStoredPlaylistsPayload(payload);
+  state.storedPlaylistPayload = normalized;
+  setStoredValue(playlistStorageKey, JSON.stringify(normalized));
+  return normalized;
+}
+
+function mergePlaylists(embeddedPlaylists, storedPayload) {
+  var deleted = {};
+  var positions = {};
+  var merged = [];
+  var storedPlaylists;
+
+  for (var deletedIndex = 0; deletedIndex < storedPayload.deletedIds.length; deletedIndex += 1) {
+    deleted[storedPayload.deletedIds[deletedIndex]] = true;
+  }
+
+  state.embeddedPlaylistIds = {};
+
+  for (var embeddedIndex = 0; embeddedIndex < embeddedPlaylists.length; embeddedIndex += 1) {
+    var embedded = embeddedPlaylists[embeddedIndex];
+    state.embeddedPlaylistIds[embedded.id] = true;
+
+    if (deleted[embedded.id]) continue;
+
+    positions[embedded.id] = merged.length;
+    merged.push(embedded);
+  }
+
+  storedPlaylists = normalizePlaylists(storedPayload, { allowEmpty: true, isStored: true });
+
+  for (var storedIndex = 0; storedIndex < storedPlaylists.length; storedIndex += 1) {
+    var stored = storedPlaylists[storedIndex];
+
+    if (typeof positions[stored.id] === "number") {
+      merged[positions[stored.id]] = stored;
+    } else {
+      positions[stored.id] = merged.length;
+      merged.push(stored);
+    }
+  }
+
+  return merged;
+}
+
 function loadEmbeddedPlaylists() {
   var payload = window.MIRROROS_PLAYLISTS;
+  var embeddedPlaylists;
 
   if (!payload && typeof MIRROROS_PLAYLISTS !== "undefined") {
     payload = MIRROROS_PLAYLISTS;
   }
 
-  state.playlists = normalizePlaylists(payload);
+  embeddedPlaylists = normalizePlaylists(payload, { allowEmpty: false, isStored: false });
+  state.storedPlaylistPayload = loadStoredPlaylistsPayload();
+  state.playlists = mergePlaylists(embeddedPlaylists, state.storedPlaylistPayload);
 }
 
 function getActivePlaylist() {
@@ -336,6 +467,16 @@ function getActivePlaylist() {
 
   for (var index = 0; index < state.playlists.length; index += 1) {
     if (state.playlists[index].id === state.activePlaylistId) {
+      return state.playlists[index];
+    }
+  }
+
+  return null;
+}
+
+function getPlaylistById(id) {
+  for (var index = 0; index < state.playlists.length; index += 1) {
+    if (state.playlists[index].id === id) {
       return state.playlists[index];
     }
   }
@@ -377,7 +518,310 @@ function renderPlaylistOptions() {
   }
 
   playlistSelect.value = state.activePlaylistId;
-  playlistSelect.disabled = state.playlists.length === 0;
+  playlistSelect.disabled = false;
+}
+
+function trimText(value) {
+  return String(value || "").replace(/^\s+|\s+$/g, "");
+}
+
+function getStoredPlaylistIndex(payload, id) {
+  for (var index = 0; index < payload.playlists.length; index += 1) {
+    if (payload.playlists[index].id === id) return index;
+  }
+
+  return -1;
+}
+
+function removeDeletedPlaylistId(payload, id) {
+  var deletedIds = [];
+
+  for (var index = 0; index < payload.deletedIds.length; index += 1) {
+    if (payload.deletedIds[index] !== id) deletedIds.push(payload.deletedIds[index]);
+  }
+
+  payload.deletedIds = deletedIds;
+}
+
+function addDeletedPlaylistId(payload, id) {
+  for (var index = 0; index < payload.deletedIds.length; index += 1) {
+    if (payload.deletedIds[index] === id) return;
+  }
+
+  payload.deletedIds.push(id);
+}
+
+function upsertStoredPlaylist(id, name, itemIds) {
+  var payload = loadStoredPlaylistsPayload();
+  var storedIndex = getStoredPlaylistIndex(payload, id);
+  var playlist = {
+    id: id,
+    name: trimText(name) || "Playlist",
+    items: itemIds || []
+  };
+
+  if (storedIndex >= 0) {
+    payload.playlists[storedIndex] = playlist;
+  } else {
+    payload.playlists.push(playlist);
+  }
+
+  removeDeletedPlaylistId(payload, id);
+  saveStoredPlaylistsPayload(payload);
+}
+
+function deleteStoredPlaylist(id) {
+  var payload = loadStoredPlaylistsPayload();
+  var playlists = [];
+
+  for (var index = 0; index < payload.playlists.length; index += 1) {
+    if (payload.playlists[index].id !== id) playlists.push(payload.playlists[index]);
+  }
+
+  payload.playlists = playlists;
+
+  if (state.embeddedPlaylistIds[id]) {
+    addDeletedPlaylistId(payload, id);
+  } else {
+    removeDeletedPlaylistId(payload, id);
+  }
+
+  saveStoredPlaylistsPayload(payload);
+}
+
+function createPlaylistId() {
+  var id;
+
+  do {
+    id = "user-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
+  } while (getPlaylistById(id));
+
+  return id;
+}
+
+function makeUniquePlaylistName() {
+  var baseName = "Nova playlist";
+  var name = baseName;
+  var suffix = 2;
+  var exists = true;
+
+  while (exists) {
+    exists = false;
+
+    for (var index = 0; index < state.playlists.length; index += 1) {
+      if (state.playlists[index].name === name) {
+        exists = true;
+        break;
+      }
+    }
+
+    if (exists) {
+      name = baseName + " " + suffix;
+      suffix += 1;
+    }
+  }
+
+  return name;
+}
+
+function getCheckedPlaylistItemIds() {
+  var ids = [];
+  var checkboxes;
+
+  if (!playlistItems || !playlistItems.querySelectorAll) return ids;
+
+  checkboxes = playlistItems.querySelectorAll("input[type=checkbox]");
+
+  for (var index = 0; index < checkboxes.length; index += 1) {
+    if (checkboxes[index].checked) ids.push(checkboxes[index].value);
+  }
+
+  return ids;
+}
+
+function refreshPlaylistsAfterChange() {
+  loadEmbeddedPlaylists();
+  renderPlaylistOptions();
+  renderMedia();
+  renderPlaylistEditor();
+  updatePlaylistUrl();
+}
+
+function renderPlaylistList() {
+  if (!playlistList) return;
+
+  clearElement(playlistList);
+
+  if (!state.playlists.length) {
+    var empty = document.createElement("span");
+    empty.className = "playlist-empty";
+    empty.textContent = "Nenhuma playlist";
+    playlistList.appendChild(empty);
+    return;
+  }
+
+  for (var index = 0; index < state.playlists.length; index += 1) {
+    var playlist = state.playlists[index];
+    var button = document.createElement("button");
+    var name = document.createElement("strong");
+    var count = document.createElement("span");
+
+    button.className = "playlist-list-item";
+    if (playlist.id === state.editingPlaylistId) addClass(button, "is-active");
+    button.type = "button";
+
+    name.textContent = playlist.name;
+    count.textContent = playlist.items.length + " midia" + (playlist.items.length === 1 ? "" : "s");
+
+    button.appendChild(name);
+    button.appendChild(count);
+
+    (function (playlistId) {
+      button.addEventListener("click", function () {
+        state.editingPlaylistId = playlistId;
+        renderPlaylistEditor();
+      });
+    })(playlist.id);
+
+    playlistList.appendChild(button);
+  }
+}
+
+function renderPlaylistMediaItems(playlist) {
+  var selected = {};
+
+  if (!playlistItems) return;
+
+  clearElement(playlistItems);
+
+  if (playlist) {
+    for (var selectedIndex = 0; selectedIndex < playlist.items.length; selectedIndex += 1) {
+      selected[playlist.items[selectedIndex].id] = true;
+    }
+  }
+
+  for (var index = 0; index < state.media.length; index += 1) {
+    var item = state.media[index];
+    var label = document.createElement("label");
+    var checkbox = document.createElement("input");
+    var text = document.createElement("span");
+    var title = document.createElement("strong");
+    var meta = document.createElement("small");
+
+    label.className = "playlist-media-row";
+
+    checkbox.type = "checkbox";
+    checkbox.value = item.id;
+    checkbox.checked = !!selected[item.id];
+    checkbox.disabled = !playlist;
+
+    title.textContent = item.name;
+    meta.textContent = (item.type === "video" ? "Video" : "Imagem") + " / " + formatBytes(item.size);
+
+    text.appendChild(title);
+    text.appendChild(meta);
+    label.appendChild(checkbox);
+    label.appendChild(text);
+    playlistItems.appendChild(label);
+  }
+}
+
+function renderPlaylistEditor() {
+  var playlist = getPlaylistById(state.editingPlaylistId);
+
+  if (!playlistEditor) return;
+
+  if (!playlist && state.playlists.length) {
+    state.editingPlaylistId = state.playlists[0].id;
+    playlist = state.playlists[0];
+  }
+
+  renderPlaylistList();
+
+  if (playlistNameInput) {
+    playlistNameInput.value = playlist ? playlist.name : "";
+    playlistNameInput.disabled = !playlist;
+  }
+
+  if (savePlaylistButton) savePlaylistButton.disabled = !playlist;
+  if (deletePlaylistButton) deletePlaylistButton.disabled = !playlist;
+
+  renderPlaylistMediaItems(playlist);
+}
+
+function openPlaylistEditor() {
+  if (!playlistEditor) return;
+
+  if (state.activePlaylistId !== "all" && getActivePlaylist()) {
+    state.editingPlaylistId = state.activePlaylistId;
+  } else if (!getPlaylistById(state.editingPlaylistId) && state.playlists.length) {
+    state.editingPlaylistId = state.playlists[0].id;
+  }
+
+  addClass(document.body, "is-editing-playlists");
+  playlistEditor.setAttribute("aria-hidden", "false");
+  renderPlaylistEditor();
+
+  if (playlistNameInput && !playlistNameInput.disabled) {
+    try {
+      playlistNameInput.focus();
+      playlistNameInput.select();
+    } catch (error) {
+      noop();
+    }
+  }
+}
+
+function closePlaylistEditor() {
+  if (!playlistEditor) return;
+
+  removeClass(document.body, "is-editing-playlists");
+  playlistEditor.setAttribute("aria-hidden", "true");
+}
+
+function createNewPlaylist() {
+  var id = createPlaylistId();
+  var name = makeUniquePlaylistName();
+
+  upsertStoredPlaylist(id, name, []);
+  state.activePlaylistId = id;
+  state.editingPlaylistId = id;
+  refreshPlaylistsAfterChange();
+}
+
+function savePlaylistFromEditor() {
+  var playlist = getPlaylistById(state.editingPlaylistId);
+  var name;
+
+  if (!playlist) return;
+
+  name = playlistNameInput ? playlistNameInput.value : playlist.name;
+  upsertStoredPlaylist(playlist.id, name, getCheckedPlaylistItemIds());
+  state.activePlaylistId = playlist.id;
+  state.editingPlaylistId = playlist.id;
+  refreshPlaylistsAfterChange();
+}
+
+function deletePlaylistFromEditor() {
+  var playlist = getPlaylistById(state.editingPlaylistId);
+  var confirmed = true;
+
+  if (!playlist) return;
+
+  if (window.confirm) {
+    confirmed = window.confirm("Apagar a playlist \"" + playlist.name + "\"?");
+  }
+
+  if (!confirmed) return;
+
+  deleteStoredPlaylist(playlist.id);
+
+  if (state.activePlaylistId === playlist.id) {
+    state.activePlaylistId = "all";
+  }
+
+  state.editingPlaylistId = null;
+  refreshPlaylistsAfterChange();
 }
 
 function getFilteredMedia() {
@@ -518,13 +962,30 @@ function renderMedia() {
 
   if (!media.length) {
     var empty = document.createElement("div");
+    var playlistHasItems = playlist && playlist.items.length;
+    var emptyHtml;
     empty.className = "empty-state";
-    empty.innerHTML = [
-      "<strong>Nenhuma midia encontrada</strong>",
-      "<span>Atualize o manifest.json ou coloque arquivos na pasta media local.</span>"
-    ].join("");
+
+    if (playlist && playlistHasItems) {
+      emptyHtml = [
+        "<strong>Nenhuma midia neste filtro</strong>",
+        "<span>" + playlist.items.length + " arquivo" + (playlist.items.length === 1 ? "" : "s") + " na playlist.</span>"
+      ].join("");
+    } else if (playlist) {
+      emptyHtml = [
+        "<strong>Playlist vazia</strong>",
+        "<span>0 arquivos selecionados.</span>"
+      ].join("");
+    } else {
+      emptyHtml = [
+        "<strong>Nenhuma midia encontrada</strong>",
+        "<span>Atualize o manifest.json ou coloque arquivos na pasta media local.</span>"
+      ].join("");
+    }
+
+    empty.innerHTML = emptyHtml;
     grid.appendChild(empty);
-    setStatus("Sem midias");
+    setStatus(playlist ? playlist.name + ": 0 arquivos" : "Sem midias");
     return;
   }
 
@@ -1296,6 +1757,46 @@ if (playlistSelect) {
   });
 }
 
+if (managePlaylistsButton) {
+  managePlaylistsButton.addEventListener("click", openPlaylistEditor);
+}
+
+if (closePlaylistEditorButton) {
+  closePlaylistEditorButton.addEventListener("click", closePlaylistEditor);
+}
+
+if (newPlaylistButton) {
+  newPlaylistButton.addEventListener("click", createNewPlaylist);
+}
+
+if (savePlaylistButton) {
+  savePlaylistButton.addEventListener("click", savePlaylistFromEditor);
+}
+
+if (deletePlaylistButton) {
+  deletePlaylistButton.addEventListener("click", deletePlaylistFromEditor);
+}
+
+if (playlistNameInput) {
+  playlistNameInput.addEventListener("keydown", function (event) {
+    var key = event.key || "";
+    var keyCode = event.keyCode || event.which;
+
+    if (key === "Enter" || keyCode === 13) {
+      if (event.preventDefault) event.preventDefault();
+      savePlaylistFromEditor();
+    }
+  });
+}
+
+if (playlistEditor) {
+  playlistEditor.addEventListener("click", function (event) {
+    if (event.target === playlistEditor) {
+      closePlaylistEditor();
+    }
+  });
+}
+
 player.addEventListener("mousemove", handlePlayerActivity, false);
 player.addEventListener("touchstart", handlePlayerActivity, false);
 player.addEventListener("click", function (event) {
@@ -1308,6 +1809,11 @@ document.addEventListener("keydown", function (event) {
   var key = event.key || "";
   var keyCode = event.keyCode || event.which;
   var lowerKey = key.toLowerCase ? key.toLowerCase() : "";
+
+  if ((key === "Escape" || keyCode === 27) && hasClass(document.body, "is-editing-playlists")) {
+    closePlaylistEditor();
+    return;
+  }
 
   if ((key === "Escape" || keyCode === 27) && state.activeMedia) {
     closePlayer();
