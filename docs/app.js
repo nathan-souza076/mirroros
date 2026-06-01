@@ -4,6 +4,11 @@ var heavyVideoBytes = 25 * 1024 * 1024;
 var playlistStorageKey = "mirroros-user-playlists";
 var apiStorageKey = "mirroros-api-url";
 var apiBaseUrl = getApiBaseUrl();
+var githubTokenStorageKey = "mirroros-github-token";
+var githubOwner = "nathan-souza076";
+var githubRepo = "mirroros";
+var githubBranch = "main";
+var githubPlaylistsPath = "playlists.json";
 
 if (!Date.now) {
   Date.now = function () {
@@ -25,6 +30,7 @@ var state = {
   embeddedPlaylistIds: {},
   editingPlaylistId: null,
   serverPlaylistsAvailable: false,
+  githubPlaylistsAvailable: false,
   filter: "all",
   activeMedia: null,
   activeIndex: -1,
@@ -214,6 +220,65 @@ function getApiBaseUrl() {
 function toApiUrl(path) {
   if (!apiBaseUrl) return path;
   return apiBaseUrl + path;
+}
+
+function isGithubPagesHost() {
+  var hostname = window.location && window.location.hostname ? window.location.hostname : "";
+  var pathname = window.location && window.location.pathname ? window.location.pathname : "";
+
+  return hostname === githubOwner + ".github.io" && pathname.indexOf("/" + githubRepo) === 0;
+}
+
+function shouldUseGithubBackend() {
+  var githubParam = getQueryParam("github");
+
+  if (githubParam === "0" || githubParam === "false") return false;
+  if (githubParam === "1" || githubParam === "true") return true;
+
+  return !apiBaseUrl && isGithubPagesHost();
+}
+
+function getGithubToken() {
+  var token = getStoredValue(githubTokenStorageKey, "");
+
+  if (token) return token;
+  if (!window.prompt) return "";
+
+  token = window.prompt(
+    "Cole uma chave do GitHub com permissao Contents Read/Write para editar playlists globais."
+  );
+  token = trimText(token);
+
+  if (token) setStoredValue(githubTokenStorageKey, token);
+
+  return token;
+}
+
+function clearGithubToken() {
+  try {
+    if (window.localStorage) window.localStorage.removeItem(githubTokenStorageKey);
+  } catch (error) {
+    noop();
+  }
+}
+
+function encodeBase64Utf8(value) {
+  return window.btoa(unescape(encodeURIComponent(value)));
+}
+
+function githubRawPlaylistsUrl() {
+  return "https://raw.githubusercontent.com/" +
+    githubOwner + "/" +
+    githubRepo + "/" +
+    githubBranch + "/" +
+    githubPlaylistsPath;
+}
+
+function githubContentsUrl() {
+  return "https://api.github.com/repos/" +
+    githubOwner + "/" +
+    githubRepo + "/contents/" +
+    githubPlaylistsPath;
 }
 
 function shouldUseLiteMode() {
@@ -459,6 +524,15 @@ function getEmbeddedPlaylists() {
 
 function applyServerPlaylistsPayload(payload) {
   state.serverPlaylistsAvailable = true;
+  state.githubPlaylistsAvailable = false;
+  state.storedPlaylistPayload = normalizeStoredPlaylistsPayload(payload);
+  state.playlists = normalizePlaylists(state.storedPlaylistPayload, { allowEmpty: true, isStored: true });
+  state.embeddedPlaylistIds = {};
+}
+
+function applyGithubPlaylistsPayload(payload) {
+  state.serverPlaylistsAvailable = false;
+  state.githubPlaylistsAvailable = true;
   state.storedPlaylistPayload = normalizeStoredPlaylistsPayload(payload);
   state.playlists = normalizePlaylists(state.storedPlaylistPayload, { allowEmpty: true, isStored: true });
   state.embeddedPlaylistIds = {};
@@ -506,6 +580,7 @@ function loadEmbeddedPlaylists() {
   var embeddedPlaylists = getEmbeddedPlaylists();
 
   state.serverPlaylistsAvailable = false;
+  state.githubPlaylistsAvailable = false;
   state.storedPlaylistPayload = loadStoredPlaylistsPayload();
   state.playlists = mergePlaylists(embeddedPlaylists, state.storedPlaylistPayload);
 }
@@ -515,6 +590,17 @@ function loadPlaylists(onDone) {
     applyServerPlaylistsPayload(payload);
     onDone();
   }, function () {
+    if (shouldUseGithubBackend()) {
+      fetchJson(appendCacheBust(githubRawPlaylistsUrl()), function (githubPayload) {
+        applyGithubPlaylistsPayload(githubPayload);
+        onDone();
+      }, function () {
+        loadEmbeddedPlaylists();
+        onDone();
+      });
+      return;
+    }
+
     loadEmbeddedPlaylists();
     onDone();
   });
@@ -631,14 +717,67 @@ function persistPlaylistPayload(payload, onDone) {
     return;
   }
 
+  if (state.githubPlaylistsAvailable || shouldUseGithubBackend()) {
+    saveGithubPlaylistsPayload(normalized, onDone);
+    return;
+  }
+
   saveStoredPlaylistsPayload(normalized);
   loadEmbeddedPlaylists();
 
   if (onDone) onDone("Playlist salva neste aparelho");
 }
 
+function saveGithubPlaylistsPayload(normalized, onDone) {
+  var token = getGithubToken();
+  var content = JSON.stringify(normalized, null, 2) + "\n";
+
+  if (!token) {
+    if (window.alert) {
+      window.alert("Para salvar no GitHub Pages para todos, informe a chave de edicao do GitHub.");
+    }
+
+    if (onDone) onDone("Chave do GitHub necessaria");
+    return;
+  }
+
+  githubRequest("GET", githubContentsUrl() + "?ref=" + encodeURIComponent(githubBranch), token, null, function (currentFile) {
+    var payload = {
+      message: "Update MirrorOS playlists",
+      content: encodeBase64Utf8(content),
+      branch: githubBranch
+    };
+
+    if (currentFile && currentFile.sha) {
+      payload.sha = currentFile.sha;
+    }
+
+    githubRequest("PUT", githubContentsUrl(), token, payload, function () {
+      applyGithubPlaylistsPayload(normalized);
+
+      if (onDone) onDone("Playlist salva no GitHub para todos");
+    }, function () {
+      clearGithubToken();
+
+      if (window.alert) {
+        window.alert("Nao foi possivel salvar no GitHub. Confira a chave de edicao e tente novamente.");
+      }
+
+      if (onDone) onDone("Erro ao salvar no GitHub");
+    });
+  }, function () {
+    clearGithubToken();
+
+    if (window.alert) {
+      window.alert("Nao foi possivel acessar o GitHub. Confira a chave de edicao e tente novamente.");
+    }
+
+    if (onDone) onDone("Erro ao acessar GitHub");
+  });
+}
+
 function getEditablePlaylistPayload() {
-  if (state.serverPlaylistsAvailable) {
+  if (state.serverPlaylistsAvailable || state.githubPlaylistsAvailable || shouldUseGithubBackend()) {
     return normalizeStoredPlaylistsPayload(state.storedPlaylistPayload);
   }
 
@@ -861,7 +1000,11 @@ function openPlaylistEditor() {
   renderPlaylistEditor();
 
   if (!state.serverPlaylistsAvailable) {
-    setStatus("Sem servidor global. Edicoes ficam neste aparelho");
+    setStatus(
+      state.githubPlaylistsAvailable || shouldUseGithubBackend()
+        ? "GitHub Pages: edicoes salvam no repositorio"
+        : "Sem servidor global. Edicoes ficam neste aparelho"
+    );
   }
 
   if (playlistNameInput && !playlistNameInput.disabled) {
@@ -1179,6 +1322,45 @@ function sendJson(url, method, payload, onSuccess, onError) {
     xhr.open(method, url, true);
     xhr.setRequestHeader("Content-Type", "application/json; charset=utf-8");
     xhr.send(JSON.stringify(payload));
+  } catch (error) {
+    onError(error);
+  }
+}
+
+function githubRequest(method, url, token, payload, onSuccess, onError) {
+  var xhr = new XMLHttpRequest();
+
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState !== 4) return;
+
+    if (xhr.status >= 200 && xhr.status < 300) {
+      try {
+        onSuccess(JSON.parse(xhr.responseText));
+      } catch (error) {
+        onError(error);
+      }
+      return;
+    }
+
+    onError(new Error("GitHub HTTP " + xhr.status));
+  };
+
+  xhr.onerror = function () {
+    onError(new Error("Falha de rede"));
+  };
+
+  try {
+    xhr.open(method, url, true);
+    xhr.setRequestHeader("Accept", "application/vnd.github+json");
+    xhr.setRequestHeader("X-GitHub-Api-Version", "2022-11-28");
+    xhr.setRequestHeader("Authorization", "Bearer " + token);
+
+    if (payload) {
+      xhr.setRequestHeader("Content-Type", "application/json; charset=utf-8");
+      xhr.send(JSON.stringify(payload));
+    } else {
+      xhr.send(null);
+    }
   } catch (error) {
     onError(error);
   }

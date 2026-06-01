@@ -54,3 +54,18 @@ O link final sera parecido com:
 ```text
 https://SEU-USUARIO.github.io/mirroros/
 ```
+
+## Editar playlists pelo proprio GitHub Pages
+
+O GitHub Pages e estatico, entao para salvar playlists globais direto pelo link publico o app grava no repositorio usando a API do GitHub.
+
+Na primeira vez que salvar uma playlist pelo app, cole uma chave do GitHub com permissao de escrita em `Contents` para este repositorio. A chave fica salva apenas no navegador daquele aparelho/editor.
+
+Resumo do fluxo:
+
+1. Abra `https://SEU-USUARIO.github.io/mirroros/`.
+2. Clique em `Playlists`.
+3. Crie ou edite a playlist.
+4. Ao salvar, informe a chave do GitHub se o app pedir.
+
+Depois que o app salva, todos que abrirem o mesmo link passam a ler a playlist atualizada do repositorio.
