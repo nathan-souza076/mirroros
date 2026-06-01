@@ -5,6 +5,9 @@ const rootDir = path.resolve(__dirname, "..");
 const mediaDir = path.resolve(process.env.MEDIA_DIR || path.join(rootDir, "media"));
 const outputPath = path.resolve(process.env.MANIFEST_PATH || path.join(rootDir, "public", "manifest.json"));
 const scriptOutputPath = path.join(path.dirname(outputPath), "media-manifest.js");
+const playlistsInputPath = path.resolve(process.env.PLAYLISTS_PATH || path.join(rootDir, "playlists.json"));
+const playlistsOutputPath = path.join(path.dirname(outputPath), "playlists.json");
+const playlistsScriptOutputPath = path.join(path.dirname(outputPath), "playlists.js");
 const baseUrl = (process.env.MEDIA_BASE_URL || "/media").replace(/\/$/, "");
 
 const videoExtensions = new Set([".mp4", ".webm", ".ogg", ".ogv", ".mov", ".m4v", ".mkv"]);
@@ -81,6 +84,7 @@ async function main() {
     generatedAt: new Date().toISOString(),
     media
   };
+  const playlists = await loadPlaylists();
 
   await fsp.mkdir(path.dirname(outputPath), { recursive: true });
   await fsp.writeFile(outputPath, `${JSON.stringify(manifest, null, 2)}\n`);
@@ -88,11 +92,36 @@ async function main() {
     scriptOutputPath,
     `var MIRROROS_MANIFEST = ${JSON.stringify(manifest, null, 2)};\nwindow.MIRROROS_MANIFEST = MIRROROS_MANIFEST;\n`
   );
+  await fsp.writeFile(playlistsOutputPath, `${JSON.stringify(playlists, null, 2)}\n`);
+  await fsp.writeFile(
+    playlistsScriptOutputPath,
+    `var MIRROROS_PLAYLISTS = ${JSON.stringify(playlists, null, 2)};\nwindow.MIRROROS_PLAYLISTS = MIRROROS_PLAYLISTS;\n`
+  );
 
   console.log(`Manifest gerado em ${outputPath}`);
   console.log(`Manifest JS gerado em ${scriptOutputPath}`);
+  console.log(`Playlists geradas em ${playlistsOutputPath}`);
+  console.log(`Playlists JS geradas em ${playlistsScriptOutputPath}`);
   console.log(`${media.length} midia(s) encontrada(s) em ${mediaDir}`);
   console.log(`Base URL: ${baseUrl}`);
+}
+
+async function loadPlaylists() {
+  try {
+    const content = await fsp.readFile(playlistsInputPath, "utf8");
+    const payload = JSON.parse(content);
+    const playlists = Array.isArray(payload) ? payload : payload.playlists;
+
+    return {
+      playlists: Array.isArray(playlists) ? playlists : []
+    };
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return { playlists: [] };
+    }
+
+    throw error;
+  }
 }
 
 main().catch((error) => {

@@ -1,0 +1,19 @@
+var MIRROROS_PLAYLISTS = {
+  "playlists": [
+    {
+      "id": "tv-box-720p",
+      "name": "TV Box 720p",
+      "items": [
+        "VÍDEO TV JUARA BRASNORTE(1)-720p.mp4"
+      ]
+    },
+    {
+      "id": "qualidade-original",
+      "name": "Qualidade original",
+      "items": [
+        "VÍDEO TV JUARA BRASNORTE(1).mp4"
+      ]
+    }
+  ]
+};
+window.MIRROROS_PLAYLISTS = MIRROROS_PLAYLISTS;
