@@ -2,6 +2,8 @@ var imageDurationMs = 8000;
 var activityThrottleMs = 180;
 var heavyVideoBytes = 25 * 1024 * 1024;
 var playlistStorageKey = "mirroros-user-playlists";
+var apiStorageKey = "mirroros-api-url";
+var apiBaseUrl = getApiBaseUrl();
 
 if (!Date.now) {
   Date.now = function () {
@@ -183,6 +185,35 @@ function setStoredValue(key, value) {
   } catch (error) {
     noop();
   }
+}
+
+function getApiBaseUrl() {
+  var configured = getQueryParam("api") || getQueryParam("server");
+
+  if (!configured) {
+    if (window.MIRROROS_API_URL) {
+      configured = window.MIRROROS_API_URL;
+    } else if (typeof MIRROROS_API_URL !== "undefined") {
+      configured = MIRROROS_API_URL;
+    }
+  }
+
+  if (!configured) {
+    configured = getStoredValue(apiStorageKey, "");
+  }
+
+  configured = String(configured || "").replace(/\/+$/, "");
+
+  if (getQueryParam("api") || getQueryParam("server")) {
+    setStoredValue(apiStorageKey, configured);
+  }
+
+  return configured;
+}
+
+function toApiUrl(path) {
+  if (!apiBaseUrl) return path;
+  return apiBaseUrl + path;
 }
 
 function shouldUseLiteMode() {
@@ -480,7 +511,7 @@ function loadEmbeddedPlaylists() {
 }
 
 function loadPlaylists(onDone) {
-  fetchJson("/api/playlists", function (payload) {
+  fetchJson(toApiUrl("/api/playlists"), function (payload) {
     applyServerPlaylistsPayload(payload);
     onDone();
   }, function () {
@@ -582,7 +613,7 @@ function persistPlaylistPayload(payload, onDone) {
   var normalized = normalizeStoredPlaylistsPayload(payload);
 
   if (state.serverPlaylistsAvailable) {
-    sendJson("/api/playlists", "PUT", normalized, function (serverPayload) {
+    sendJson(toApiUrl("/api/playlists"), "PUT", normalized, function (serverPayload) {
       applyServerPlaylistsPayload(serverPayload);
 
       if (onDone) onDone("Playlist salva para todos");
@@ -1153,6 +1184,48 @@ function sendJson(url, method, payload, onSuccess, onError) {
   }
 }
 
+function withApiMediaUrls(payload) {
+  var media;
+  var clone;
+
+  if (!apiBaseUrl) return payload;
+
+  media = Array.isArray(payload) ? payload : payload && payload.media;
+  if (!Array.isArray(media)) return payload;
+
+  clone = Array.isArray(payload) ? [] : {};
+
+  if (!Array.isArray(payload)) {
+    for (var key in payload) {
+      if (Object.prototype.hasOwnProperty.call(payload, key)) {
+        clone[key] = payload[key];
+      }
+    }
+  }
+
+  clone.media = [];
+
+  for (var index = 0; index < media.length; index += 1) {
+    var item = {};
+
+    for (var itemKey in media[index]) {
+      if (Object.prototype.hasOwnProperty.call(media[index], itemKey)) {
+        item[itemKey] = media[index][itemKey];
+      }
+    }
+
+    if (item.url && !/^[a-z][a-z0-9+.-]*:\/\//i.test(String(item.url))) {
+      item.url = String(item.url).charAt(0) === "/"
+        ? apiBaseUrl + item.url
+        : apiBaseUrl + "/" + item.url;
+    }
+
+    clone.media.push(item);
+  }
+
+  return clone;
+}
+
 function normalizeManifest(payload) {
   var media = Array.isArray(payload) ? payload : payload && payload.media;
   var normalized = [];
@@ -1238,7 +1311,9 @@ function loadMedia() {
   setStatus("Carregando");
   refreshButton.disabled = true;
 
-  fetchJson("/api/media", completeMediaLoad, function () {
+  fetchJson(toApiUrl("/api/media"), function (payload) {
+    completeMediaLoad(withApiMediaUrls(payload));
+  }, function () {
     if (loadEmbeddedManifest()) return;
 
     fetchJson("manifest.json", completeMediaLoad, failMediaLoad);
