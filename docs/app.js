@@ -475,7 +475,7 @@ function loadEmbeddedPlaylists() {
   var embeddedPlaylists = getEmbeddedPlaylists();
 
   state.serverPlaylistsAvailable = false;
-  state.storedPlaylistPayload = { playlists: [], deletedIds: [] };
+  state.storedPlaylistPayload = loadStoredPlaylistsPayload();
   state.playlists = mergePlaylists(embeddedPlaylists, state.storedPlaylistPayload);
 }
 
@@ -588,24 +588,22 @@ function persistPlaylistPayload(payload, onDone) {
       if (onDone) onDone("Playlist salva para todos");
     }, function () {
       state.serverPlaylistsAvailable = false;
+      saveStoredPlaylistsPayload(normalized);
       loadEmbeddedPlaylists();
 
       if (window.alert) {
-        window.alert("Nao foi possivel salvar para todos. Abra o MirrorOS pelo servidor local e tente novamente.");
+        window.alert("Nao foi possivel salvar para todos agora. A playlist ficou salva neste aparelho.");
       }
 
-      if (onDone) onDone("Nao foi possivel salvar globalmente");
+      if (onDone) onDone("Playlist salva neste aparelho");
     });
     return;
   }
 
+  saveStoredPlaylistsPayload(normalized);
   loadEmbeddedPlaylists();
 
-  if (window.alert) {
-    window.alert("Para salvar playlists para todos, abra o MirrorOS pelo servidor local.");
-  }
-
-  if (onDone) onDone("Nao foi possivel salvar globalmente");
+  if (onDone) onDone("Playlist salva neste aparelho");
 }
 
 function getEditablePlaylistPayload() {
@@ -781,7 +779,7 @@ function renderPlaylistMediaItems(playlist) {
     checkbox.type = "checkbox";
     checkbox.value = item.id;
     checkbox.checked = !!selected[item.id];
-    checkbox.disabled = !playlist || !state.serverPlaylistsAvailable;
+    checkbox.disabled = !playlist;
 
     title.textContent = item.name;
     meta.textContent = (item.type === "video" ? "Video" : "Imagem") + " / " + formatBytes(item.size);
@@ -808,12 +806,12 @@ function renderPlaylistEditor() {
 
   if (playlistNameInput) {
     playlistNameInput.value = playlist ? playlist.name : "";
-    playlistNameInput.disabled = !playlist || !state.serverPlaylistsAvailable;
+    playlistNameInput.disabled = !playlist;
   }
 
-  if (newPlaylistButton) newPlaylistButton.disabled = !state.serverPlaylistsAvailable;
-  if (savePlaylistButton) savePlaylistButton.disabled = !playlist || !state.serverPlaylistsAvailable;
-  if (deletePlaylistButton) deletePlaylistButton.disabled = !playlist || !state.serverPlaylistsAvailable;
+  if (newPlaylistButton) newPlaylistButton.disabled = false;
+  if (savePlaylistButton) savePlaylistButton.disabled = !playlist;
+  if (deletePlaylistButton) deletePlaylistButton.disabled = !playlist;
 
   renderPlaylistMediaItems(playlist);
 }
@@ -832,7 +830,7 @@ function openPlaylistEditor() {
   renderPlaylistEditor();
 
   if (!state.serverPlaylistsAvailable) {
-    setStatus("Abra pelo servidor MirrorOS para salvar playlists globais");
+    setStatus("Sem servidor global. Edicoes ficam neste aparelho");
   }
 
   if (playlistNameInput && !playlistNameInput.disabled) {
