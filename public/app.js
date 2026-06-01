@@ -22,6 +22,7 @@ var state = {
   storedPlaylistPayload: { playlists: [], deletedIds: [] },
   embeddedPlaylistIds: {},
   editingPlaylistId: null,
+  serverPlaylistsAvailable: false,
   filter: "all",
   activeMedia: null,
   activeIndex: -1,
@@ -411,6 +412,27 @@ function saveStoredPlaylistsPayload(payload) {
   return normalized;
 }
 
+function getEmbeddedPlaylistPayload() {
+  var payload = window.MIRROROS_PLAYLISTS;
+
+  if (!payload && typeof MIRROROS_PLAYLISTS !== "undefined") {
+    payload = MIRROROS_PLAYLISTS;
+  }
+
+  return payload;
+}
+
+function getEmbeddedPlaylists() {
+  return normalizePlaylists(getEmbeddedPlaylistPayload(), { allowEmpty: false, isStored: false });
+}
+
+function applyServerPlaylistsPayload(payload) {
+  state.serverPlaylistsAvailable = true;
+  state.storedPlaylistPayload = normalizeStoredPlaylistsPayload(payload);
+  state.playlists = normalizePlaylists(state.storedPlaylistPayload, { allowEmpty: true, isStored: true });
+  state.embeddedPlaylistIds = {};
+}
+
 function mergePlaylists(embeddedPlaylists, storedPayload) {
   var deleted = {};
   var positions = {};
@@ -450,16 +472,21 @@ function mergePlaylists(embeddedPlaylists, storedPayload) {
 }
 
 function loadEmbeddedPlaylists() {
-  var payload = window.MIRROROS_PLAYLISTS;
-  var embeddedPlaylists;
+  var embeddedPlaylists = getEmbeddedPlaylists();
 
-  if (!payload && typeof MIRROROS_PLAYLISTS !== "undefined") {
-    payload = MIRROROS_PLAYLISTS;
-  }
-
-  embeddedPlaylists = normalizePlaylists(payload, { allowEmpty: false, isStored: false });
-  state.storedPlaylistPayload = loadStoredPlaylistsPayload();
+  state.serverPlaylistsAvailable = false;
+  state.storedPlaylistPayload = { playlists: [], deletedIds: [] };
   state.playlists = mergePlaylists(embeddedPlaylists, state.storedPlaylistPayload);
+}
+
+function loadPlaylists(onDone) {
+  fetchJson("/api/playlists", function (payload) {
+    applyServerPlaylistsPayload(payload);
+    onDone();
+  }, function () {
+    loadEmbeddedPlaylists();
+    onDone();
+  });
 }
 
 function getActivePlaylist() {
@@ -551,8 +578,48 @@ function addDeletedPlaylistId(payload, id) {
   payload.deletedIds.push(id);
 }
 
-function upsertStoredPlaylist(id, name, itemIds) {
-  var payload = loadStoredPlaylistsPayload();
+function persistPlaylistPayload(payload, onDone) {
+  var normalized = normalizeStoredPlaylistsPayload(payload);
+
+  if (state.serverPlaylistsAvailable) {
+    sendJson("/api/playlists", "PUT", normalized, function (serverPayload) {
+      applyServerPlaylistsPayload(serverPayload);
+
+      if (onDone) onDone("Playlist salva para todos");
+    }, function () {
+      state.serverPlaylistsAvailable = false;
+      loadEmbeddedPlaylists();
+
+      if (window.alert) {
+        window.alert("Nao foi possivel salvar para todos. Abra o MirrorOS pelo servidor local e tente novamente.");
+      }
+
+      if (onDone) onDone("Nao foi possivel salvar globalmente");
+    });
+    return;
+  }
+
+  loadEmbeddedPlaylists();
+
+  if (window.alert) {
+    window.alert("Para salvar playlists para todos, abra o MirrorOS pelo servidor local.");
+  }
+
+  if (onDone) onDone("Nao foi possivel salvar globalmente");
+}
+
+function getEditablePlaylistPayload() {
+  if (state.serverPlaylistsAvailable) {
+    return normalizeStoredPlaylistsPayload(state.storedPlaylistPayload);
+  }
+
+  return normalizeStoredPlaylistsPayload({
+    playlists: state.playlists
+  });
+}
+
+function upsertStoredPlaylist(id, name, itemIds, onDone) {
+  var payload = getEditablePlaylistPayload();
   var storedIndex = getStoredPlaylistIndex(payload, id);
   var playlist = {
     id: id,
@@ -567,11 +634,11 @@ function upsertStoredPlaylist(id, name, itemIds) {
   }
 
   removeDeletedPlaylistId(payload, id);
-  saveStoredPlaylistsPayload(payload);
+  persistPlaylistPayload(payload, onDone);
 }
 
-function deleteStoredPlaylist(id) {
-  var payload = loadStoredPlaylistsPayload();
+function deleteStoredPlaylist(id, onDone) {
+  var payload = getEditablePlaylistPayload();
   var playlists = [];
 
   for (var index = 0; index < payload.playlists.length; index += 1) {
@@ -580,13 +647,13 @@ function deleteStoredPlaylist(id) {
 
   payload.playlists = playlists;
 
-  if (state.embeddedPlaylistIds[id]) {
+  if (!state.serverPlaylistsAvailable && state.embeddedPlaylistIds[id]) {
     addDeletedPlaylistId(payload, id);
   } else {
     removeDeletedPlaylistId(payload, id);
   }
 
-  saveStoredPlaylistsPayload(payload);
+  persistPlaylistPayload(payload, onDone);
 }
 
 function createPlaylistId() {
@@ -639,12 +706,13 @@ function getCheckedPlaylistItemIds() {
   return ids;
 }
 
-function refreshPlaylistsAfterChange() {
-  loadEmbeddedPlaylists();
+function refreshPlaylistsAfterChange(message) {
   renderPlaylistOptions();
   renderMedia();
   renderPlaylistEditor();
   updatePlaylistUrl();
+
+  if (message) setStatus(message);
 }
 
 function renderPlaylistList() {
@@ -713,7 +781,7 @@ function renderPlaylistMediaItems(playlist) {
     checkbox.type = "checkbox";
     checkbox.value = item.id;
     checkbox.checked = !!selected[item.id];
-    checkbox.disabled = !playlist;
+    checkbox.disabled = !playlist || !state.serverPlaylistsAvailable;
 
     title.textContent = item.name;
     meta.textContent = (item.type === "video" ? "Video" : "Imagem") + " / " + formatBytes(item.size);
@@ -740,11 +808,12 @@ function renderPlaylistEditor() {
 
   if (playlistNameInput) {
     playlistNameInput.value = playlist ? playlist.name : "";
-    playlistNameInput.disabled = !playlist;
+    playlistNameInput.disabled = !playlist || !state.serverPlaylistsAvailable;
   }
 
-  if (savePlaylistButton) savePlaylistButton.disabled = !playlist;
-  if (deletePlaylistButton) deletePlaylistButton.disabled = !playlist;
+  if (newPlaylistButton) newPlaylistButton.disabled = !state.serverPlaylistsAvailable;
+  if (savePlaylistButton) savePlaylistButton.disabled = !playlist || !state.serverPlaylistsAvailable;
+  if (deletePlaylistButton) deletePlaylistButton.disabled = !playlist || !state.serverPlaylistsAvailable;
 
   renderPlaylistMediaItems(playlist);
 }
@@ -761,6 +830,10 @@ function openPlaylistEditor() {
   addClass(document.body, "is-editing-playlists");
   playlistEditor.setAttribute("aria-hidden", "false");
   renderPlaylistEditor();
+
+  if (!state.serverPlaylistsAvailable) {
+    setStatus("Abra pelo servidor MirrorOS para salvar playlists globais");
+  }
 
   if (playlistNameInput && !playlistNameInput.disabled) {
     try {
@@ -783,10 +856,9 @@ function createNewPlaylist() {
   var id = createPlaylistId();
   var name = makeUniquePlaylistName();
 
-  upsertStoredPlaylist(id, name, []);
   state.activePlaylistId = id;
   state.editingPlaylistId = id;
-  refreshPlaylistsAfterChange();
+  upsertStoredPlaylist(id, name, [], refreshPlaylistsAfterChange);
 }
 
 function savePlaylistFromEditor() {
@@ -796,10 +868,9 @@ function savePlaylistFromEditor() {
   if (!playlist) return;
 
   name = playlistNameInput ? playlistNameInput.value : playlist.name;
-  upsertStoredPlaylist(playlist.id, name, getCheckedPlaylistItemIds());
   state.activePlaylistId = playlist.id;
   state.editingPlaylistId = playlist.id;
-  refreshPlaylistsAfterChange();
+  upsertStoredPlaylist(playlist.id, name, getCheckedPlaylistItemIds(), refreshPlaylistsAfterChange);
 }
 
 function deletePlaylistFromEditor() {
@@ -821,7 +892,7 @@ function deletePlaylistFromEditor() {
   }
 
   state.editingPlaylistId = null;
-  refreshPlaylistsAfterChange();
+  deleteStoredPlaylist(playlist.id, refreshPlaylistsAfterChange);
 }
 
 function getFilteredMedia() {
@@ -1053,6 +1124,37 @@ function fetchJson(url, onSuccess, onError) {
   }
 }
 
+function sendJson(url, method, payload, onSuccess, onError) {
+  var xhr = new XMLHttpRequest();
+
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState !== 4) return;
+
+    if (xhr.status >= 200 && xhr.status < 300) {
+      try {
+        onSuccess(JSON.parse(xhr.responseText));
+      } catch (error) {
+        onError(error);
+      }
+      return;
+    }
+
+    onError(new Error("HTTP " + xhr.status));
+  };
+
+  xhr.onerror = function () {
+    onError(new Error("Falha de rede"));
+  };
+
+  try {
+    xhr.open(method, url, true);
+    xhr.setRequestHeader("Content-Type", "application/json; charset=utf-8");
+    xhr.send(JSON.stringify(payload));
+  } catch (error) {
+    onError(error);
+  }
+}
+
 function normalizeManifest(payload) {
   var media = Array.isArray(payload) ? payload : payload && payload.media;
   var normalized = [];
@@ -1094,12 +1196,12 @@ function completeMediaLoad(payload) {
 
   state.media = loadedMedia;
   updatePerformanceMode();
-  loadEmbeddedPlaylists();
-  renderPlaylistOptions();
-
-  renderMedia();
-  openFromQuery();
-  refreshButton.disabled = false;
+  loadPlaylists(function () {
+    renderPlaylistOptions();
+    renderMedia();
+    openFromQuery();
+    refreshButton.disabled = false;
+  });
 }
 
 function loadEmbeddedManifest() {
@@ -1138,10 +1240,10 @@ function loadMedia() {
   setStatus("Carregando");
   refreshButton.disabled = true;
 
-  if (loadEmbeddedManifest()) return;
+  fetchJson("/api/media", completeMediaLoad, function () {
+    if (loadEmbeddedManifest()) return;
 
-  fetchJson("manifest.json", completeMediaLoad, function () {
-    fetchJson("/api/media", completeMediaLoad, failMediaLoad);
+    fetchJson("manifest.json", completeMediaLoad, failMediaLoad);
   });
 }
 

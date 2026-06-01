@@ -7,6 +7,7 @@ const { URL } = require("node:url");
 const rootDir = __dirname;
 const publicDir = path.join(rootDir, "public");
 const mediaDir = path.resolve(process.env.MEDIA_DIR || path.join(rootDir, "media"));
+const playlistsPath = path.resolve(process.env.PLAYLISTS_PATH || path.join(rootDir, "playlists.json"));
 const host = process.env.HOST || "0.0.0.0";
 const port = Number(process.env.PORT || 8080);
 
@@ -52,6 +53,29 @@ function sendText(response, statusCode, text) {
     "Content-Length": Buffer.byteLength(text)
   });
   response.end(text);
+}
+
+function readRequestBody(request, limit = 1024 * 1024) {
+  return new Promise((resolve, reject) => {
+    let body = "";
+
+    request.setEncoding("utf8");
+
+    request.on("data", (chunk) => {
+      body += chunk;
+
+      if (Buffer.byteLength(body) > limit) {
+        reject(new Error("Payload muito grande."));
+        request.destroy();
+      }
+    });
+
+    request.on("end", () => {
+      resolve(body);
+    });
+
+    request.on("error", reject);
+  });
 }
 
 function isInside(baseDir, targetPath) {
@@ -112,6 +136,108 @@ async function listMediaFiles(currentDir = mediaDir) {
     first.folder.localeCompare(second.folder, "pt-BR") ||
     first.name.localeCompare(second.name, "pt-BR")
   );
+}
+
+function playlistTokenValue(token) {
+  if (token && typeof token === "object") {
+    return token.id || token.fileName || token.name || token.url || "";
+  }
+
+  return token;
+}
+
+function findMediaByPlaylistToken(media, token) {
+  const value = String(playlistTokenValue(token) || "");
+
+  for (const item of media) {
+    if (
+      item.id === value ||
+      item.fileName === value ||
+      item.name === value ||
+      item.url === value ||
+      decodeURIComponent(item.url).replace(/^\//, "") === value
+    ) {
+      return item;
+    }
+  }
+
+  return null;
+}
+
+function normalizePlaylistId(value, fallback) {
+  return String(value || fallback)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80) || fallback;
+}
+
+function normalizePlaylistPayload(payload, media) {
+  const source = Array.isArray(payload) ? payload : payload && payload.playlists;
+  const playlists = [];
+  const usedIds = new Set();
+
+  if (!Array.isArray(source)) {
+    return { playlists };
+  }
+
+  for (let index = 0; index < source.length; index += 1) {
+    const rawPlaylist = source[index];
+    const rawItems = rawPlaylist && rawPlaylist.items;
+    const items = [];
+    const seenItems = new Set();
+
+    if (!rawPlaylist || !Array.isArray(rawItems)) continue;
+
+    let id = normalizePlaylistId(rawPlaylist.id || rawPlaylist.name, `playlist-${index + 1}`);
+    let suffix = 2;
+
+    while (usedIds.has(id)) {
+      id = normalizePlaylistId(`${id}-${suffix}`, `playlist-${index + 1}-${suffix}`);
+      suffix += 1;
+    }
+
+    usedIds.add(id);
+
+    for (const rawItem of rawItems) {
+      const mediaItem = findMediaByPlaylistToken(media, rawItem);
+      if (!mediaItem || seenItems.has(mediaItem.id)) continue;
+
+      seenItems.add(mediaItem.id);
+      items.push(mediaItem.id);
+    }
+
+    playlists.push({
+      id,
+      name: String(rawPlaylist.name || id).trim().slice(0, 60) || id,
+      items
+    });
+  }
+
+  return { playlists };
+}
+
+async function readPlaylists(media) {
+  try {
+    const content = await fsp.readFile(playlistsPath, "utf8");
+    return normalizePlaylistPayload(JSON.parse(content), media);
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return { playlists: [] };
+    }
+
+    throw error;
+  }
+}
+
+async function writePlaylists(payload, media) {
+  const playlists = normalizePlaylistPayload(payload, media);
+
+  await fsp.writeFile(playlistsPath, `${JSON.stringify(playlists, null, 2)}\n`);
+
+  return playlists;
 }
 
 function resolvePublicPath(pathname) {
@@ -200,6 +326,38 @@ async function handleRequest(request, response) {
         count: media.length,
         mediaDir
       });
+      return;
+    }
+
+    if (url.pathname === "/api/playlists") {
+      await fsp.mkdir(mediaDir, { recursive: true });
+      const media = await listMediaFiles();
+
+      if (request.method === "GET") {
+        sendJson(response, 200, await readPlaylists(media));
+        return;
+      }
+
+      if (request.method === "PUT" || request.method === "POST") {
+        let payload;
+
+        try {
+          payload = JSON.parse(await readRequestBody(request));
+        } catch {
+          sendJson(response, 400, {
+            error: "JSON invalido."
+          });
+          return;
+        }
+
+        sendJson(response, 200, await writePlaylists(payload, media));
+        return;
+      }
+
+      response.writeHead(405, {
+        "Allow": "GET, PUT, POST"
+      });
+      response.end();
       return;
     }
 
