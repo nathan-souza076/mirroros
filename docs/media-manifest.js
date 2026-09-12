@@ -1,126 +1,60 @@
 var MIRROROS_MANIFEST = {
-  "generatedAt": "2026-09-12T15:25:31.627Z",
+  "generatedAt": "2026-09-12T15:50:13.509Z",
   "media": [
     {
-      "id": "Design sem nome.png",
-      "name": "Design sem nome",
-      "fileName": "Design sem nome.png",
+      "id": "promocao-massa-leve.png",
+      "name": "promocao-massa-leve",
+      "fileName": "promocao-massa-leve.png",
       "folder": "",
       "type": "image",
       "extension": "png",
-      "size": 2096267,
-      "updatedAt": "2026-09-09T21:55:10.092Z",
-      "url": "media/Design%20sem%20nome.png"
+      "size": 1676590,
+      "updatedAt": "2026-09-12T15:47:38.775Z",
+      "url": "media/promocao-massa-leve.png"
     },
     {
-      "id": "Mundo divertido.png",
-      "name": "Mundo divertido",
-      "fileName": "Mundo divertido.png",
+      "id": "promocao-mega-sorteio.png",
+      "name": "promocao-mega-sorteio",
+      "fileName": "promocao-mega-sorteio.png",
+      "folder": "",
+      "type": "image",
+      "extension": "png",
+      "size": 1827082,
+      "updatedAt": "2026-09-12T15:47:38.647Z",
+      "url": "media/promocao-mega-sorteio.png"
+    },
+    {
+      "id": "promocao-mundo-divertido.png",
+      "name": "promocao-mundo-divertido",
+      "fileName": "promocao-mundo-divertido.png",
       "folder": "",
       "type": "image",
       "extension": "png",
       "size": 2265458,
-      "updatedAt": "2026-09-12T14:28:12.620Z",
-      "url": "media/Mundo%20divertido.png"
+      "updatedAt": "2026-09-12T15:47:39.227Z",
+      "url": "media/promocao-mundo-divertido.png"
     },
     {
-      "id": "Piracanjuba 1.mp4",
-      "name": "Piracanjuba 1",
-      "fileName": "Piracanjuba 1.mp4",
-      "folder": "",
-      "type": "video",
-      "extension": "mp4",
-      "size": 5588422,
-      "updatedAt": "2026-09-11T21:09:05.706Z",
-      "url": "media/Piracanjuba%201.mp4"
-    },
-    {
-      "id": "Piracanjuba 2.mp4",
-      "name": "Piracanjuba 2",
-      "fileName": "Piracanjuba 2.mp4",
-      "folder": "",
-      "type": "video",
-      "extension": "mp4",
-      "size": 6291118,
-      "updatedAt": "2026-09-11T21:09:05.839Z",
-      "url": "media/Piracanjuba%202.mp4"
-    },
-    {
-      "id": "promocao-massa-leve-1980x1080.jpg",
-      "name": "promocao-massa-leve-1980x1080",
-      "fileName": "promocao-massa-leve-1980x1080.jpg",
+      "id": "promocao-pix-premiado.png",
+      "name": "promocao-pix-premiado",
+      "fileName": "promocao-pix-premiado.png",
       "folder": "",
       "type": "image",
-      "extension": "jpg",
-      "size": 360079,
-      "updatedAt": "2026-09-12T15:23:25.060Z",
-      "url": "media/promocao-massa-leve-1980x1080.jpg"
+      "extension": "png",
+      "size": 2343881,
+      "updatedAt": "2026-09-12T15:47:39.153Z",
+      "url": "media/promocao-pix-premiado.png"
     },
     {
-      "id": "promocao-mega-sorteio-1980x1080.jpg",
-      "name": "promocao-mega-sorteio-1980x1080",
-      "fileName": "promocao-mega-sorteio-1980x1080.jpg",
+      "id": "promocao-tricard.png",
+      "name": "promocao-tricard",
+      "fileName": "promocao-tricard.png",
       "folder": "",
       "type": "image",
-      "extension": "jpg",
-      "size": 326524,
-      "updatedAt": "2026-09-12T15:23:24.954Z",
-      "url": "media/promocao-mega-sorteio-1980x1080.jpg"
-    },
-    {
-      "id": "promocao-pix-premiado-1980x1080.jpg",
-      "name": "promocao-pix-premiado-1980x1080",
-      "fileName": "promocao-pix-premiado-1980x1080.jpg",
-      "folder": "",
-      "type": "image",
-      "extension": "jpg",
-      "size": 512720,
-      "updatedAt": "2026-09-12T15:23:25.320Z",
-      "url": "media/promocao-pix-premiado-1980x1080.jpg"
-    },
-    {
-      "id": "promocao-tricard-1980x1080.jpg",
-      "name": "promocao-tricard-1980x1080",
-      "fileName": "promocao-tricard-1980x1080.jpg",
-      "folder": "",
-      "type": "image",
-      "extension": "jpg",
-      "size": 409490,
-      "updatedAt": "2026-09-12T15:23:25.210Z",
-      "url": "media/promocao-tricard-1980x1080.jpg"
-    },
-    {
-      "id": "Santa Maria.mp4",
-      "name": "Santa Maria",
-      "fileName": "Santa Maria.mp4",
-      "folder": "",
-      "type": "video",
-      "extension": "mp4",
-      "size": 11200718,
-      "updatedAt": "2026-09-11T21:09:06.072Z",
-      "url": "media/Santa%20Maria.mp4"
-    },
-    {
-      "id": "VÍDEO TV JUARA BRASNORTE(1).mp4",
-      "name": "VÍDEO TV JUARA BRASNORTE(1)",
-      "fileName": "VÍDEO TV JUARA BRASNORTE(1).mp4",
-      "folder": "",
-      "type": "video",
-      "extension": "mp4",
-      "size": 47100947,
-      "updatedAt": "2026-09-11T21:09:06.714Z",
-      "url": "media/V%C3%8DDEO%20TV%20JUARA%20BRASNORTE(1).mp4"
-    },
-    {
-      "id": "VÍDEO TV JUARA BRASNORTE(1)-720p.mp4",
-      "name": "VÍDEO TV JUARA BRASNORTE(1)-720p",
-      "fileName": "VÍDEO TV JUARA BRASNORTE(1)-720p.mp4",
-      "folder": "",
-      "type": "video",
-      "extension": "mp4",
-      "size": 2567193,
-      "updatedAt": "2026-09-11T21:09:06.123Z",
-      "url": "media/V%C3%8DDEO%20TV%20JUARA%20BRASNORTE(1)-720p.mp4"
+      "extension": "png",
+      "size": 2024685,
+      "updatedAt": "2026-09-12T15:47:38.868Z",
+      "url": "media/promocao-tricard.png"
     }
   ]
 };

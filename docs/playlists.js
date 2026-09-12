@@ -1,38 +1,14 @@
 var MIRROROS_PLAYLISTS = {
   "playlists": [
     {
-      "id": "tv-box-720p",
-      "name": "TV Box 720p",
-      "items": [
-        "VÍDEO TV JUARA BRASNORTE(1)-720p.mp4"
-      ]
-    },
-    {
-      "id": "qualidade-original",
-      "name": "Qualidade original",
-      "items": [
-        "VÍDEO TV JUARA BRASNORTE(1).mp4"
-      ]
-    },
-    {
-      "id": "user-1780323298189-602",
-      "name": "Juara",
-      "items": [
-        "Piracanjuba 1.mp4",
-        "Piracanjuba 2.mp4",
-        "Santa Maria.mp4",
-        "VÍDEO TV JUARA BRASNORTE(1).mp4"
-      ]
-    },
-    {
       "id": "promocoes-imagens-10s",
       "name": "Promoções em imagens (10s)",
       "items": [
-        "Mundo divertido.png",
-        "promocao-mega-sorteio-1980x1080.jpg",
-        "promocao-massa-leve-1980x1080.jpg",
-        "promocao-tricard-1980x1080.jpg",
-        "promocao-pix-premiado-1980x1080.jpg"
+        "promocao-mega-sorteio.png",
+        "promocao-massa-leve.png",
+        "promocao-tricard.png",
+        "promocao-pix-premiado.png",
+        "promocao-mundo-divertido.png"
       ]
     }
   ]
