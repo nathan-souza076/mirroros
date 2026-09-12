@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-11T21:12:41.514Z",
+  "generatedAt": "2026-09-12T14:30:01.679Z",
   "media": [
     {
       "id": "Design sem nome.png",
@@ -11,6 +11,17 @@
       "size": 2096267,
       "updatedAt": "2026-09-09T21:55:10.092Z",
       "url": "media/Design%20sem%20nome.png"
+    },
+    {
+      "id": "Mundo divertido.png",
+      "name": "Mundo divertido",
+      "fileName": "Mundo divertido.png",
+      "folder": "",
+      "type": "image",
+      "extension": "png",
+      "size": 2265458,
+      "updatedAt": "2026-09-12T14:28:12.620Z",
+      "url": "media/Mundo%20divertido.png"
     },
     {
       "id": "Piracanjuba 1.mp4",
