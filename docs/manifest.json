@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-12T14:30:01.679Z",
+  "generatedAt": "2026-09-12T15:25:31.627Z",
   "media": [
     {
       "id": "Design sem nome.png",
@@ -44,6 +44,50 @@
       "size": 6291118,
       "updatedAt": "2026-09-11T21:09:05.839Z",
       "url": "media/Piracanjuba%202.mp4"
+    },
+    {
+      "id": "promocao-massa-leve-1980x1080.jpg",
+      "name": "promocao-massa-leve-1980x1080",
+      "fileName": "promocao-massa-leve-1980x1080.jpg",
+      "folder": "",
+      "type": "image",
+      "extension": "jpg",
+      "size": 360079,
+      "updatedAt": "2026-09-12T15:23:25.060Z",
+      "url": "media/promocao-massa-leve-1980x1080.jpg"
+    },
+    {
+      "id": "promocao-mega-sorteio-1980x1080.jpg",
+      "name": "promocao-mega-sorteio-1980x1080",
+      "fileName": "promocao-mega-sorteio-1980x1080.jpg",
+      "folder": "",
+      "type": "image",
+      "extension": "jpg",
+      "size": 326524,
+      "updatedAt": "2026-09-12T15:23:24.954Z",
+      "url": "media/promocao-mega-sorteio-1980x1080.jpg"
+    },
+    {
+      "id": "promocao-pix-premiado-1980x1080.jpg",
+      "name": "promocao-pix-premiado-1980x1080",
+      "fileName": "promocao-pix-premiado-1980x1080.jpg",
+      "folder": "",
+      "type": "image",
+      "extension": "jpg",
+      "size": 512720,
+      "updatedAt": "2026-09-12T15:23:25.320Z",
+      "url": "media/promocao-pix-premiado-1980x1080.jpg"
+    },
+    {
+      "id": "promocao-tricard-1980x1080.jpg",
+      "name": "promocao-tricard-1980x1080",
+      "fileName": "promocao-tricard-1980x1080.jpg",
+      "folder": "",
+      "type": "image",
+      "extension": "jpg",
+      "size": 409490,
+      "updatedAt": "2026-09-12T15:23:25.210Z",
+      "url": "media/promocao-tricard-1980x1080.jpg"
     },
     {
       "id": "Santa Maria.mp4",

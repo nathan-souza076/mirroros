@@ -1,4 +1,4 @@
-var imageDurationMs = 8000;
+var imageDurationMs = 10000;
 var activityThrottleMs = 180;
 var heavyVideoBytes = 25 * 1024 * 1024;
 var playlistStorageKey = "mirroros-user-playlists";
