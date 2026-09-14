@@ -1,6 +1,28 @@
 {
-  "generatedAt": "2026-09-12T15:50:13.509Z",
+  "generatedAt": "2026-09-14T20:48:22.471Z",
   "media": [
+    {
+      "id": "promocao-bike.png",
+      "name": "promocao-bike",
+      "fileName": "promocao-bike.png",
+      "folder": "",
+      "type": "image",
+      "extension": "png",
+      "size": 2097357,
+      "updatedAt": "2026-09-14T20:38:25.879Z",
+      "url": "media/promocao-bike.png"
+    },
+    {
+      "id": "promocao-hoverboard.png",
+      "name": "promocao-hoverboard",
+      "fileName": "promocao-hoverboard.png",
+      "folder": "",
+      "type": "image",
+      "extension": "png",
+      "size": 2099519,
+      "updatedAt": "2026-09-14T20:38:25.928Z",
+      "url": "media/promocao-hoverboard.png"
+    },
     {
       "id": "promocao-massa-leve.png",
       "name": "promocao-massa-leve",
@@ -35,6 +57,17 @@
       "url": "media/promocao-mundo-divertido.png"
     },
     {
+      "id": "promocao-patinete.png",
+      "name": "promocao-patinete",
+      "fileName": "promocao-patinete.png",
+      "folder": "",
+      "type": "image",
+      "extension": "png",
+      "size": 2102820,
+      "updatedAt": "2026-09-14T20:38:26.054Z",
+      "url": "media/promocao-patinete.png"
+    },
+    {
       "id": "promocao-pix-premiado.png",
       "name": "promocao-pix-premiado",
       "fileName": "promocao-pix-premiado.png",
@@ -55,6 +88,28 @@
       "size": 2024685,
       "updatedAt": "2026-09-12T15:47:38.868Z",
       "url": "media/promocao-tricard.png"
+    },
+    {
+      "id": "promocao-triciclo.png",
+      "name": "promocao-triciclo",
+      "fileName": "promocao-triciclo.png",
+      "folder": "",
+      "type": "image",
+      "extension": "png",
+      "size": 2086799,
+      "updatedAt": "2026-09-14T20:39:23.055Z",
+      "url": "media/promocao-triciclo.png"
+    },
+    {
+      "id": "promocao-tv.png",
+      "name": "promocao-tv",
+      "fileName": "promocao-tv.png",
+      "folder": "",
+      "type": "image",
+      "extension": "png",
+      "size": 1995801,
+      "updatedAt": "2026-09-14T20:38:26.928Z",
+      "url": "media/promocao-tv.png"
     }
   ]
 }
