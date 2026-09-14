@@ -1,28 +1,6 @@
 var MIRROROS_MANIFEST = {
-  "generatedAt": "2026-09-14T20:48:22.471Z",
+  "generatedAt": "2026-09-14T20:55:42.837Z",
   "media": [
-    {
-      "id": "promocao-bike.png",
-      "name": "promocao-bike",
-      "fileName": "promocao-bike.png",
-      "folder": "",
-      "type": "image",
-      "extension": "png",
-      "size": 2097357,
-      "updatedAt": "2026-09-14T20:38:25.879Z",
-      "url": "media/promocao-bike.png"
-    },
-    {
-      "id": "promocao-hoverboard.png",
-      "name": "promocao-hoverboard",
-      "fileName": "promocao-hoverboard.png",
-      "folder": "",
-      "type": "image",
-      "extension": "png",
-      "size": 2099519,
-      "updatedAt": "2026-09-14T20:38:25.928Z",
-      "url": "media/promocao-hoverboard.png"
-    },
     {
       "id": "promocao-massa-leve.png",
       "name": "promocao-massa-leve",

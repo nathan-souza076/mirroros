@@ -9,8 +9,6 @@ var MIRROROS_PLAYLISTS = {
         "promocao-tricard.png",
         "promocao-pix-premiado.png",
         "promocao-mundo-divertido.png",
-        "promocao-hoverboard.png",
-        "promocao-bike.png",
         "promocao-tv.png",
         "promocao-triciclo.png",
         "promocao-patinete.png"
